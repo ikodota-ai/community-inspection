@@ -31,10 +31,10 @@
         <!-- ====== 表单 ====== -->
         <div v-if="viewMode==='form'" class="p-4 space-y-5">
             <div class="grid grid-cols-3 gap-2">
-                <button v-for="t in mainTypes" @click="form.mainType=t; form.subType='燃气'" :class="['py-2 rounded-xl border text-xs font-bold transition', form.mainType===t?'bg-blue-600 text-white border-blue-600 shadow-md':'bg-white text-gray-600']">{{ t }}</button>
+                <button v-for="t in mainTypes" @click="form.mainType=t.value; form.subType='gas'" :class="['py-2 rounded-xl border text-xs font-bold transition', form.mainType===t.value?'bg-blue-600 text-white border-blue-600 shadow-md':'bg-white text-gray-600']">{{ t.label }}</button>
             </div>
             <div class="grid grid-cols-4 gap-2">
-                <button v-for="s in subTypes" @click="form.subType=s" :class="['py-1.5 rounded-lg border text-[10px] font-bold transition', form.subType===s?'bg-indigo-500 text-white':'bg-white text-gray-600']">{{ s }}</button>
+                <button v-for="s in subTypes" @click="form.subType=s.value" :class="['py-1.5 rounded-lg border text-[10px] font-bold transition', form.subType===s.value?'bg-indigo-500 text-white':'bg-white text-gray-600']">{{ s.label }}</button>
             </div>
             <div class="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 space-y-4">
                 <div class="relative">
@@ -46,7 +46,7 @@
                         </div>
                     </div>
                 </div>
-                <div v-if="form.subType==='租户'" class="bg-white p-4 rounded-xl border-l-4 border-orange-500">
+                <div v-if="form.subType==='tenant'" class="bg-white p-4 rounded-xl border-l-4 border-orange-500">
                     <h4 class="text-xs font-bold text-gray-400 mb-2">租户信息 <span class="text-orange-400">(现场修正)</span></h4>
                     <div class="grid grid-cols-2 gap-4">
                         <div><p class="text-[10px] text-gray-400">承租人</p><input v-model="form.tenantName" class="tenant-input text-sm" placeholder="姓名"></div>
@@ -106,7 +106,7 @@
                         <div class="flex-1">
                             <div class="flex items-center gap-2 mb-1.5">
                                 <span :class="['text-[8px] px-1.5 py-0.5 rounded font-black text-white', r.inspectResult==='pass'?'bg-green-500':'bg-red-500']">{{ resultLabel(r.inspectResult) }}</span>
-                                <span class="text-xs font-black text-gray-800 truncate">{{ r.mainType }} · {{ r.subType }}</span>
+                                <span class="text-xs font-black text-gray-800 truncate">{{ mainLabel(r.mainType) }} · {{ subLabel(r.subType) }}</span>
                             </div>
                             <p class="text-[10px] text-gray-500 truncate">{{ r.addressName }}</p>
                             <p class="text-[9px] text-blue-500 font-mono mt-1">{{ r.inspectTime }}</p>
@@ -129,14 +129,27 @@ createApp({
     setup() {
         const viewMode = ref('form'); const isEditing = ref(false); const submitting = ref(false);
         const logs = ref([]); const lastLog = ref({}); const suggestions = ref([]);
-        const mainTypes = ['楼栋','街巷','公共场所','商企','工地'];
-        const subTypes = ['燃气','消防','租户','独居','门卫','其他'];
+        // 字典值(提交用) 和 显示标签(UI用)
+        const mainTypes = [
+          {value:'building', label:'楼栋'},{value:'street', label:'街巷'},
+          {value:'public', label:'公共场所'},{value:'biz', label:'商企'},{value:'site', label:'工地'}
+        ];
+        const subTypes = [
+          {value:'gas', label:'燃气'},{value:'fire', label:'消防'},
+          {value:'tenant', label:'租户'},{value:'solo', label:'独居'},
+          {value:'guard', label:'门卫'},{value:'other', label:'其他'}
+        ];
 
-        const form = ref({ logId:null, mainType:'楼栋', subType:'燃气', addressName:'', addressId:null,
+        const form = ref({ logId:null, mainType:'building', subType:'gas', addressName:'', addressId:null,
             description:'', inspectResult:'pass', hazardLevel:'', tenantName:'', tenantPhone:'',
             photos:[], inspectTime:'' });
 
         const resultLabel = (v) => ({ pass:'合格', hazard:'存在隐患', rectified:'已整改' }[v]||v);
+        // 类型和细项标签映射
+        const mainLabels = { building:'楼栋', street:'街巷', public:'公共场所', biz:'商企', site:'工地' };
+        const subLabels  = { gas:'燃气', fire:'消防', tenant:'租户', solo:'独居', guard:'门卫', other:'其他' };
+        const mainLabel = (v) => mainLabels[v]||v;
+        const subLabel  = (v) => subLabels[v]||v;
 
         // ==== 地址搜索 ====
         let searchTimer;
@@ -220,7 +233,7 @@ createApp({
             isEditing.value = true; viewMode.value = 'form';
         };
         const resetForm = () => {
-            form.value = { logId:null, mainType:'楼栋', subType:'燃气', addressName:'', addressId:null,
+            form.value = { logId:null, mainType:'building', subType:'gas', addressName:'', addressId:null,
                 description:'', inspectResult:'pass', hazardLevel:'', tenantName:'', tenantPhone:'', photos:[], inspectTime:'' };
             isEditing.value = false; viewMode.value = 'form';
         };
@@ -229,7 +242,7 @@ createApp({
         // 检查登录
         if (!TOKEN()) window.location.href = 'index.html';
 
-        return { viewMode, isEditing, submitting, form, mainTypes, subTypes, logs, lastLog, suggestions,
+        return { viewMode, isEditing, submitting, form, mainTypes, subTypes, logs, lastLog, suggestions, mainLabel, subLabel,
             searchAddress, selectAddress, handleFileUpload, submitForm, loadHistory, editRecord, resetForm,
             handleLogout, resultLabel, onResultChange };
     }
