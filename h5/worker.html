@@ -132,18 +132,21 @@ if (!TOKEN()) {
 const authHeaders = () => ({ 'Authorization': 'Bearer '+TOKEN() });
 const jsonHeaders = () => ({ 'Authorization': 'Bearer '+TOKEN(), 'Content-Type': 'application/json' });
 
-// 统一 fetch 封装：401 时自动跳回登录页
+// 统一请求封装：拦截401自动跳登录
 async function apiFetch(url, options = {}) {
-  const res = await apiFetch(url, options);
-  if (res.status === 401 || (res.headers.get('content-type')||'').includes('json')) {
-    const clone = res.clone();
-    const data = await clone.json().catch(() => ({}));
-    if (data.code === 401) {
-      localStorage.setItem('returnUrl', window.location.href);
-      localStorage.removeItem('token');
-      window.location.href = location.pathname.replace(/worker\.html$/,'index.html');
-      throw new Error('auth');
-    }
+  const res = await fetch(url, options);
+  const ct = res.headers.get('content-type') || '';
+  if (res.status === 401 || ct.includes('json')) {
+    try {
+      const txt = await res.clone().text();
+      const data = JSON.parse(txt);
+      if (data.code === 401) {
+        localStorage.setItem('returnUrl', window.location.href);
+        localStorage.removeItem('token');
+        window.location.href = location.pathname.replace(/worker\.html$/,'index.html');
+        return Promise.reject(new Error('AUTH_EXPIRED'));
+      }
+    } catch(e) { if (e.message === 'AUTH_EXPIRED') throw e; }
   }
   return res;
 }
