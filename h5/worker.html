@@ -31,9 +31,9 @@
         <!-- ====== 表单 ====== -->
         <div v-if="viewMode==='form'" class="p-4 space-y-5">
             <div class="grid grid-cols-3 gap-2">
-                <button v-for="t in mainTypes" @click="form.mainType=t; form.subType=(t==='楼栋'?'燃气':'')" :class="['py-2 rounded-xl border text-xs font-bold transition', form.mainType===t?'bg-blue-600 text-white border-blue-600 shadow-md':'bg-white text-gray-600']">{{ t }}</button>
+                <button v-for="t in mainTypes" @click="form.mainType=t; form.subType='燃气'" :class="['py-2 rounded-xl border text-xs font-bold transition', form.mainType===t?'bg-blue-600 text-white border-blue-600 shadow-md':'bg-white text-gray-600']">{{ t }}</button>
             </div>
-            <div v-if="form.mainType==='楼栋'" class="grid grid-cols-4 gap-2">
+            <div class="grid grid-cols-4 gap-2">
                 <button v-for="s in subTypes" @click="form.subType=s" :class="['py-1.5 rounded-lg border text-[10px] font-bold transition', form.subType===s?'bg-indigo-500 text-white':'bg-white text-gray-600']">{{ s }}</button>
             </div>
             <div class="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 space-y-4">

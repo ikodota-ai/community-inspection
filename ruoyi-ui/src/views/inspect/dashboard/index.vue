@@ -33,12 +33,12 @@
           <el-card shadow="never">
             <el-form :inline="true" size="small" style="margin-bottom:12px">
               <el-form-item label="巡查类型">
-                <el-select v-model="queryParams.mainType" clearable @change="queryParams.subType='';handleQuery()" placeholder="全部">
+                <el-select v-model="queryParams.mainType" clearable @change="handleQuery()" placeholder="全部">
                   <el-option label="楼栋" value="building"/><el-option label="街巷" value="street"/>
                   <el-option label="公共场所" value="public"/><el-option label="商企" value="biz"/><el-option label="工地" value="site"/>
                 </el-select>
               </el-form-item>
-              <el-form-item v-if="queryParams.mainType==='building'" label="细项">
+              <el-form-item label="细项">
                 <el-select v-model="queryParams.subType" clearable @change="handleQuery" placeholder="全部">
                   <el-option label="燃气" value="gas"/><el-option label="消防" value="fire"/>
                   <el-option label="租户" value="tenant"/><el-option label="独居" value="solo"/>
@@ -98,12 +98,12 @@
             <template v-if="fsView==='record'">
               <div class="fs-filter-group">
                 <span class="fs-flabel">主载体:</span>
-                <select v-model="queryParams.mainType" @change="queryParams.subType='';handleQuery()" class="fs-sel">
+                <select v-model="queryParams.mainType" @change="handleQuery()" class="fs-sel">
                   <option value="">全部类型</option>
                   <option v-for="t in mainTypes" :key="t" :value="t">{{ t }}</option>
                 </select>
               </div>
-              <div v-if="queryParams.mainType==='building'" class="fs-filter-group active">
+              <div class="fs-filter-group active">
                 <span class="fs-flabel">细项:</span>
                 <select v-model="queryParams.subType" @change="handleQuery" class="fs-sel">
                   <option value="">全部细项</option>
