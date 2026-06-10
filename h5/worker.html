@@ -39,7 +39,7 @@
             <div class="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 space-y-4">
                 <div class="relative">
                     <label class="block text-xs font-bold text-blue-600 mb-1">巡查地址</label>
-                    <input v-model="form.address" @input="searchAddress" type="text" placeholder="输入地址搜索..." class="w-full px-4 py-3 rounded-xl bg-white text-sm outline-none shadow-sm">
+                    <input v-model="form.addressName" @input="searchAddress" type="text" placeholder="输入地址搜索..." class="w-full px-4 py-3 rounded-xl bg-white text-sm outline-none shadow-sm">
                     <div v-if="suggestions.length>0" class="absolute z-40 w-full mt-1 bg-white border rounded-xl shadow-2xl overflow-hidden">
                         <div v-for="item in suggestions" @click="selectAddress(item)" class="px-4 py-3 text-sm hover:bg-blue-50 border-b flex justify-between">
                             <span>{{ item.addressName }}</span><span class="text-[10px] text-blue-500">{{ item.tenantName||'无租户' }}</span>
@@ -131,7 +131,7 @@ createApp({
         const mainTypes = ['楼栋','街巷','公共场所','商企','工地'];
         const subTypes = ['燃气','消防','租户','独居','门卫','其他'];
 
-        const form = ref({ logId:null, mainType:'楼栋', subType:'燃气', address:'', addressId:null,
+        const form = ref({ logId:null, mainType:'楼栋', subType:'燃气', addressName:'', addressId:null,
             description:'', inspectResult:'pass', hazardLevel:'', tenantName:'', tenantPhone:'',
             photos:[], inspectTime:'' });
 
@@ -142,7 +142,7 @@ createApp({
         const searchAddress = () => {
             clearTimeout(searchTimer);
             searchTimer = setTimeout(async () => {
-                const kw = form.value.address;
+                const kw = form.value.addressName;
                 if (kw.length < 1) { suggestions.value = []; return; }
                 try {
                     const res = await fetch(API+'/h5/address/search?keyword='+encodeURIComponent(kw), { headers: AUTH().headers });
@@ -152,7 +152,7 @@ createApp({
             }, 300);
         };
         const selectAddress = (item) => {
-            form.value.address = item.addressName;
+            form.value.addressName = item.addressName;
             form.value.addressId = item.addressId;
             suggestions.value = [];
             if (form.value.subType === '租户') {
@@ -178,7 +178,7 @@ createApp({
 
         // ==== 提交 ====
         const submitForm = async () => {
-            if (!form.value.address) return alert('请填写巡查地址');
+            if (!form.value.addressName) return alert('请填写巡查地址');
             submitting.value = true;
             form.value.inspectTime = new Date().toISOString().slice(0,19).replace('T',' ');
             const body = { ...form.value, photos: form.value.photos.map(p=>({ photoUrl: p.photoUrl, sortOrder: p.sortOrder })) };
@@ -212,14 +212,14 @@ createApp({
             } catch(e) { alert('加载失败: '+e.message); }
         };
         const editRecord = (r) => {
-            form.value = { logId: r.logId, mainType: r.mainType, subType: r.subType, address: r.addressName,
+            form.value = { logId: r.logId, mainType: r.mainType, subType: r.subType, addressName: r.addressName,
                 addressId: r.addressId, description: r.description||'', inspectResult: r.inspectResult,
                 hazardLevel: r.hazardLevel||'', tenantName: r.tenantName||'', tenantPhone: r.tenantPhone||'',
                 photos: (r.photos||[]).map(p=>({ photoUrl: p.photoUrl, sortOrder: p.sortOrder })), inspectTime: '' };
             isEditing.value = true; viewMode.value = 'form';
         };
         const resetForm = () => {
-            form.value = { logId:null, mainType:'楼栋', subType:'燃气', address:'', addressId:null,
+            form.value = { logId:null, mainType:'楼栋', subType:'燃气', addressName:'', addressId:null,
                 description:'', inspectResult:'pass', hazardLevel:'', tenantName:'', tenantPhone:'', photos:[], inspectTime:'' };
             isEditing.value = false; viewMode.value = 'form';
         };
