@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>巡检终端 - 社区隐患排查</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .glass-blur { backdrop-filter: blur(8px); background: rgba(255,255,255,0.9); }
+        .tenant-input { border-bottom: 1px dashed #3b82f6; background: transparent; outline: none; width: 100%; font-weight: bold; color: #1e40af; }
+        .img-upload-box { border: 2px dashed #e2e8f0; aspect-ratio: 1/1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+<div id="app" class="max-w-md mx-auto bg-white min-h-screen shadow-xl flex flex-col relative">
+    <header class="p-3 border-b bg-white sticky top-0 z-30 flex justify-between items-center shadow-sm glass-blur">
+        <button v-if="viewMode==='form'&&!isEditing" @click="handleLogout" class="text-red-500 text-xs font-bold">登出</button>
+        <button v-if="isEditing" @click="resetForm" class="text-blue-600 text-xs">取消</button>
+        <button v-if="viewMode==='history'" @click="viewMode='form'" class="text-gray-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
+        <div class="text-center"><h1 v-if="viewMode==='form'" class="font-bold text-base text-blue-600">{{ isEditing?'修改记录':'现场录入' }}</h1>
+            <h1 v-else-if="viewMode==='history'" class="font-bold text-base text-gray-800">巡查档案</h1>
+            <h1 v-else class="font-bold text-base text-green-600">提交成功</h1>
+        </div>
+        <button v-if="viewMode==='form'&&!isEditing" @click="loadHistory" class="flex flex-col items-center text-blue-600"><div class="p-1.5 bg-blue-50 rounded-full"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg></div><span class="text-[9px] font-bold">档案</span></button>
+        <div v-else class="w-10"></div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto no-scrollbar">
+        <!-- ====== 表单 ====== -->
+        <div v-if="viewMode==='form'" class="p-4 space-y-5">
+            <div class="grid grid-cols-3 gap-2">
+                <button v-for="t in mainTypes" @click="form.mainType=t; form.subType=(t==='楼栋'?'燃气':'')" :class="['py-2 rounded-xl border text-xs font-bold transition', form.mainType===t?'bg-blue-600 text-white border-blue-600 shadow-md':'bg-white text-gray-600']">{{ t }}</button>
+            </div>
+            <div v-if="form.mainType==='楼栋'" class="grid grid-cols-4 gap-2">
+                <button v-for="s in subTypes" @click="form.subType=s" :class="['py-1.5 rounded-lg border text-[10px] font-bold transition', form.subType===s?'bg-indigo-500 text-white':'bg-white text-gray-600']">{{ s }}</button>
+            </div>
+            <div class="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 space-y-4">
+                <div class="relative">
+                    <label class="block text-xs font-bold text-blue-600 mb-1">巡查地址</label>
+                    <input v-model="form.address" @input="searchAddress" type="text" placeholder="输入地址搜索..." class="w-full px-4 py-3 rounded-xl bg-white text-sm outline-none shadow-sm">
+                    <div v-if="suggestions.length>0" class="absolute z-40 w-full mt-1 bg-white border rounded-xl shadow-2xl overflow-hidden">
+                        <div v-for="item in suggestions" @click="selectAddress(item)" class="px-4 py-3 text-sm hover:bg-blue-50 border-b flex justify-between">
+                            <span>{{ item.addressName }}</span><span class="text-[10px] text-blue-500">{{ item.tenantName||'无租户' }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div v-if="form.subType==='租户'" class="bg-white p-4 rounded-xl border-l-4 border-orange-500">
+                    <h4 class="text-xs font-bold text-gray-400 mb-2">租户信息 <span class="text-orange-400">(现场修正)</span></h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><p class="text-[10px] text-gray-400">承租人</p><input v-model="form.tenantName" class="tenant-input text-sm" placeholder="姓名"></div>
+                        <div><p class="text-[10px] text-gray-400">联系电话</p><input v-model="form.tenantPhone" class="tenant-input text-sm" placeholder="手机号"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="space-y-2">
+                <label class="block text-xs font-bold text-gray-400">现场照片 ({{ form.photos.length }}/9)</label>
+                <div class="grid grid-cols-3 gap-3">
+                    <div v-for="(p,idx) in form.photos" :key="idx" class="relative aspect-square">
+                        <img :src="p.preview||p.photoUrl" class="w-full h-full object-cover rounded-xl border">
+                        <button @click="form.photos.splice(idx,1)" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">×</button>
+                    </div>
+                    <div v-if="form.photos.length<9" @click="$refs.fileInput.click()" class="img-upload-box bg-white">
+                        <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke-width="2"/><circle cx="12" cy="13" r="3" stroke-width="2"/></svg>
+                        <span class="text-[10px] text-gray-400 mt-1 font-bold">拍照</span>
+                    </div>
+                </div>
+                <input type="file" ref="fileInput" class="hidden" accept="image/*" multiple @change="handleFileUpload">
+            </div>
+            <div><textarea v-model="form.description" rows="3" class="w-full p-4 bg-gray-50 border rounded-2xl text-sm" placeholder="详述现场检查情况..."></textarea></div>
+            <div class="grid grid-cols-2 gap-4">
+                <div><label class="block text-[11px] font-bold text-gray-500 mb-1 ml-1">巡查结果</label>
+                    <select v-model="form.inspectResult" @change="onResultChange" class="w-full p-3 border rounded-xl text-sm font-bold bg-white">
+                        <option value="pass">合格</option><option value="hazard">存在隐患</option><option value="rectified">已整改</option>
+                    </select>
+                </div>
+                <div><label class="block text-[11px] font-bold text-gray-500 mb-1 ml-1">隐患级别</label>
+                    <select v-model="form.hazardLevel" :disabled="form.inspectResult==='pass'" class="w-full p-3 border rounded-xl text-sm bg-white" :class="{'opacity-50':form.inspectResult==='pass'}">
+                        <template v-if="form.inspectResult==='hazard'"><option value="general">一般</option><option value="major">较大</option><option value="critical">重大</option></template>
+                        <template v-else><option value="">无</option></template>
+                    </select>
+                </div>
+            </div>
+            <button @click="submitForm" :disabled="submitting" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg active:scale-95 transition disabled:opacity-50">
+                {{ submitting?'提交中...':(isEditing?'保存修改':'立即提交巡查记录') }}
+            </button>
+        </div>
+
+        <!-- ====== 成功 ====== -->
+        <div v-if="viewMode==='success'" class="p-6 flex flex-col items-center">
+            <div class="mt-10 mb-8 text-center"><div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 font-bold text-2xl">✓</div><h2 class="text-xl font-black text-gray-800">提交成功</h2></div>
+            <div class="w-full bg-gray-50 rounded-3xl p-5 space-y-3">
+                <div class="flex justify-between border-b pb-2 text-xs"><span class="text-gray-400">流水号</span><span class="font-mono font-bold">{{ lastLog.logCode }}</span></div>
+                <div class="flex justify-between border-b pb-2 text-xs"><span class="text-gray-400">时间</span><span class="text-gray-600 font-bold font-mono">{{ lastLog.inspectTime }}</span></div>
+            </div>
+            <div class="mt-10 w-full space-y-3"><button @click="resetForm" class="w-full bg-blue-600 text-white py-3.5 rounded-2xl font-bold">录入下一条</button><button @click="loadHistory" class="w-full bg-white text-gray-500 py-3 rounded-2xl border font-bold text-sm">查看档案</button></div>
+        </div>
+
+        <!-- ====== 档案 ====== -->
+        <div v-if="viewMode==='history'" class="flex flex-col min-h-full">
+            <div v-if="logs.length===0" class="p-20 text-center text-gray-300">暂无档案记录</div>
+            <div v-else class="divide-y flex-1">
+                <div v-for="r in logs" :key="r.logId" class="p-3 bg-white border-l-4 active:bg-gray-50" :style="{borderColor: r.inspectResult==='pass'?'#10b981':'#ef4444'}">
+                    <div class="flex justify-between items-center gap-3">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <span :class="['text-[8px] px-1.5 py-0.5 rounded font-black text-white', r.inspectResult==='pass'?'bg-green-500':'bg-red-500']">{{ resultLabel(r.inspectResult) }}</span>
+                                <span class="text-xs font-black text-gray-800 truncate">{{ r.mainType }} · {{ r.subType }}</span>
+                            </div>
+                            <p class="text-[10px] text-gray-500 truncate">{{ r.addressName }}</p>
+                            <p class="text-[9px] text-blue-500 font-mono mt-1">{{ r.inspectTime }}</p>
+                        </div>
+                        <button @click="editRecord(r)" class="flex flex-col items-center p-2 text-orange-600 font-bold bg-orange-50 rounded-xl border border-orange-100"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-width="2"/></svg><span class="text-[9px]">编辑</span></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+<script>
+const { createApp, ref } = Vue;
+const API = 'http://localhost:8080';
+const TOKEN = () => localStorage.getItem('token')||'';
+const AUTH = () => ({ headers: { 'Authorization': 'Bearer '+TOKEN(), 'Content-Type': 'application/json' } });
+
+createApp({
+    setup() {
+        const viewMode = ref('form'); const isEditing = ref(false); const submitting = ref(false);
+        const logs = ref([]); const lastLog = ref({}); const suggestions = ref([]);
+        const mainTypes = ['楼栋','街巷','公共场所','商企','工地'];
+        const subTypes = ['燃气','消防','租户','独居','门卫','其他'];
+
+        const form = ref({ logId:null, mainType:'楼栋', subType:'燃气', address:'', addressId:null,
+            description:'', inspectResult:'pass', hazardLevel:'', tenantName:'', tenantPhone:'',
+            photos:[], inspectTime:'' });
+
+        const resultLabel = (v) => ({ pass:'合格', hazard:'存在隐患', rectified:'已整改' }[v]||v);
+
+        // ==== 地址搜索 ====
+        let searchTimer;
+        const searchAddress = () => {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(async () => {
+                const kw = form.value.address;
+                if (kw.length < 1) { suggestions.value = []; return; }
+                try {
+                    const res = await fetch(API+'/h5/address/search?keyword='+encodeURIComponent(kw), { headers: AUTH().headers });
+                    const data = await res.json();
+                    suggestions.value = data.data || [];
+                } catch(e) { console.error(e); }
+            }, 300);
+        };
+        const selectAddress = (item) => {
+            form.value.address = item.addressName;
+            form.value.addressId = item.addressId;
+            suggestions.value = [];
+            if (form.value.subType === '租户') {
+                form.value.tenantName = item.tenantName || '';
+                form.value.tenantPhone = item.tenantPhone || '';
+            }
+        };
+
+        // ==== 照片 ====
+        const handleFileUpload = async (e) => {
+            const files = Array.from(e.target.files);
+            for (const file of files) {
+                if (form.value.photos.length >= 9) break;
+                const fd = new FormData(); fd.append('file', file);
+                try {
+                    const res = await fetch(API+'/common/upload', { method:'POST', headers:{'Authorization':'Bearer '+TOKEN()}, body:fd });
+                    const data = await res.json();
+                    if (data.code === 200) form.value.photos.push({ photoUrl: data.url||data.fileName, sortOrder: form.value.photos.length, preview: URL.createObjectURL(file) });
+                } catch(e) { console.error(e); }
+            }
+            e.target.value = '';
+        };
+
+        // ==== 提交 ====
+        const submitForm = async () => {
+            if (!form.value.address) return alert('请填写巡查地址');
+            submitting.value = true;
+            form.value.inspectTime = new Date().toISOString().slice(0,19).replace('T',' ');
+            const body = { ...form.value, photos: form.value.photos.map(p=>({ photoUrl: p.photoUrl, sortOrder: p.sortOrder })) };
+            delete body.logId;
+            try {
+                const url = isEditing.value ? API+'/h5/log' : API+'/h5/log';
+                const method = isEditing.value ? 'PUT' : 'POST';
+                if (isEditing.value) body.logId = form.value.logId;
+                const res = await fetch(url, { method, headers: AUTH().headers, body: JSON.stringify(body) });
+                const data = await res.json();
+                if (data.code === 200) {
+                    if (isEditing.value) { form.value.logId = null; await loadHistory(); viewMode.value = 'history'; }
+                    else { lastLog.value = body; viewMode.value = 'success'; }
+                } else alert(data.msg||'提交失败');
+            } catch(e) { alert('网络错误: '+e.message); }
+            submitting.value = false;
+        };
+
+        const onResultChange = () => {
+            if (form.value.inspectResult === 'pass'||form.value.inspectResult==='rectified') form.value.hazardLevel = '';
+            else if (!form.value.hazardLevel) form.value.hazardLevel = 'general';
+        };
+
+        // ==== 档案 ====
+        const loadHistory = async () => {
+            try {
+                const res = await fetch(API+'/h5/log/myList?pageNum=1&pageSize=50', { headers: AUTH().headers });
+                const data = await res.json();
+                logs.value = data.rows || [];
+                viewMode.value = 'history';
+            } catch(e) { alert('加载失败: '+e.message); }
+        };
+        const editRecord = (r) => {
+            form.value = { logId: r.logId, mainType: r.mainType, subType: r.subType, address: r.addressName,
+                addressId: r.addressId, description: r.description||'', inspectResult: r.inspectResult,
+                hazardLevel: r.hazardLevel||'', tenantName: r.tenantName||'', tenantPhone: r.tenantPhone||'',
+                photos: (r.photos||[]).map(p=>({ photoUrl: p.photoUrl, sortOrder: p.sortOrder })), inspectTime: '' };
+            isEditing.value = true; viewMode.value = 'form';
+        };
+        const resetForm = () => {
+            form.value = { logId:null, mainType:'楼栋', subType:'燃气', address:'', addressId:null,
+                description:'', inspectResult:'pass', hazardLevel:'', tenantName:'', tenantPhone:'', photos:[], inspectTime:'' };
+            isEditing.value = false; viewMode.value = 'form';
+        };
+        const handleLogout = () => { localStorage.clear(); window.location.href = 'index.html'; };
+
+        // 检查登录
+        if (!TOKEN()) window.location.href = 'index.html';
+
+        return { viewMode, isEditing, submitting, form, mainTypes, subTypes, logs, lastLog, suggestions,
+            searchAddress, selectAddress, handleFileUpload, submitForm, loadHistory, editRecord, resetForm,
+            handleLogout, resultLabel, onResultChange };
+    }
+}).mount('#app');
+</script>
+</body>
+</html>
