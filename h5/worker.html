@@ -120,7 +120,8 @@
 </div>
 <script>
 const { createApp, ref } = Vue;
-const API = 'http://localhost:8080';
+// 自动使用当前域名，nginx代理到后端
+const API = window.location.protocol + '//' + window.location.host;
 const TOKEN = () => localStorage.getItem('token')||'';
 const AUTH = () => ({ headers: { 'Authorization': 'Bearer '+TOKEN(), 'Content-Type': 'application/json' } });
 
