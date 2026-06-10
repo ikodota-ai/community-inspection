@@ -72,12 +72,12 @@
             <div class="grid grid-cols-2 gap-4">
                 <div><label class="block text-[11px] font-bold text-gray-500 mb-1 ml-1">巡查结果</label>
                     <select v-model="form.inspectResult" @change="onResultChange" class="w-full p-3 border rounded-xl text-sm font-bold bg-white">
-                        <option value="pass">合格</option><option value="hazard">存在隐患</option><option value="rectified">已整改</option>
+                        <option v-for="d in resultTypes" :key="d.value" :value="d.value">{{ d.label }}</option>
                     </select>
                 </div>
                 <div><label class="block text-[11px] font-bold text-gray-500 mb-1 ml-1">隐患级别</label>
                     <select v-model="form.hazardLevel" :disabled="form.inspectResult==='pass'" class="w-full p-3 border rounded-xl text-sm bg-white" :class="{'opacity-50':form.inspectResult==='pass'}">
-                        <template v-if="form.inspectResult==='hazard'"><option value="general">一般</option><option value="major">较大</option><option value="critical">重大</option></template>
+                        <template v-if="form.inspectResult==='hazard'"><option v-for="d in levelTypes" :key="d.value" :value="d.value">{{ d.label }}</option></template>
                         <template v-else><option value="">无</option></template>
                     </select>
                 </div>
@@ -129,27 +129,42 @@ createApp({
     setup() {
         const viewMode = ref('form'); const isEditing = ref(false); const submitting = ref(false);
         const logs = ref([]); const lastLog = ref({}); const suggestions = ref([]);
-        // 字典值(提交用) 和 显示标签(UI用)
-        const mainTypes = [
-          {value:'building', label:'楼栋'},{value:'street', label:'街巷'},
-          {value:'public', label:'公共场所'},{value:'biz', label:'商企'},{value:'site', label:'工地'}
-        ];
-        const subTypes = [
-          {value:'gas', label:'燃气'},{value:'fire', label:'消防'},
-          {value:'tenant', label:'租户'},{value:'solo', label:'独居'},
-          {value:'guard', label:'门卫'},{value:'other', label:'其他'}
-        ];
+        // 从后端字典接口加载枚举数据
+        const mainTypes = ref([]);
+        const subTypes = ref([]);
+        const resultTypes = ref([]);
+        const levelTypes = ref([]);
 
-        const form = ref({ logId:null, mainType:'building', subType:'gas', addressName:'', addressId:null,
-            description:'', inspectResult:'pass', hazardLevel:'', tenantName:'', tenantPhone:'',
+        const form = ref({ logId:null, mainType:'', subType:'', addressName:'', addressId:null,
+            description:'', inspectResult:'', hazardLevel:'', tenantName:'', tenantPhone:'',
             photos:[], inspectTime:'' });
 
-        const resultLabel = (v) => ({ pass:'合格', hazard:'存在隐患', rectified:'已整改' }[v]||v);
-        // 类型和细项标签映射
-        const mainLabels = { building:'楼栋', street:'街巷', public:'公共场所', biz:'商企', site:'工地' };
-        const subLabels  = { gas:'燃气', fire:'消防', tenant:'租户', solo:'独居', guard:'门卫', other:'其他' };
-        const mainLabel = (v) => mainLabels[v]||v;
-        const subLabel  = (v) => subLabels[v]||v;
+        // 字典加载
+        const loadDicts = async () => {
+          try {
+            const [p, i, r, l] = await Promise.all([
+              fetch(API+'/system/dict/data/type/ins_place_type',{headers:AUTH().headers}).then(r=>r.json()),
+              fetch(API+'/system/dict/data/type/ins_inspect_item',{headers:AUTH().headers}).then(r=>r.json()),
+              fetch(API+'/system/dict/data/type/ins_inspect_result',{headers:AUTH().headers}).then(r=>r.json()),
+              fetch(API+'/system/dict/data/type/ins_hazard_level',{headers:AUTH().headers}).then(r=>r.json())
+            ]);
+            mainTypes.value = (p.data||[]).map(d=>({value:d.dictValue,label:d.dictLabel}));
+            subTypes.value = (i.data||[]).map(d=>({value:d.dictValue,label:d.dictLabel}));
+            resultTypes.value = (r.data||[]).map(d=>({value:d.dictValue,label:d.dictLabel}));
+            levelTypes.value = (l.data||[]).map(d=>({value:d.dictValue,label:d.dictLabel}));
+            // 设置默认值
+            if (mainTypes.value.length) form.value.mainType = mainTypes.value[0].value;
+            if (subTypes.value.length) form.value.subType = subTypes.value[0].value;
+            if (resultTypes.value.length) form.value.inspectResult = resultTypes.value[0].value;
+          } catch(e) { console.error('Dict load failed:', e); }
+        };
+
+        // 标签查找
+        const dictLabel = (arr, val) => { const f = arr.find(x=>x.value===val); return f ? f.label : val; };
+        const mainLabel = (v) => dictLabel(mainTypes.value, v);
+        const subLabel = (v) => dictLabel(subTypes.value, v);
+        const resultLabel = (v) => dictLabel(resultTypes.value, v);
+        const levelLabel = (v) => dictLabel(levelTypes.value, v);
 
         // ==== 地址搜索 ====
         let searchTimer;
@@ -233,16 +248,22 @@ createApp({
             isEditing.value = true; viewMode.value = 'form';
         };
         const resetForm = () => {
-            form.value = { logId:null, mainType:'building', subType:'gas', addressName:'', addressId:null,
-                description:'', inspectResult:'pass', hazardLevel:'', tenantName:'', tenantPhone:'', photos:[], inspectTime:'' };
+            form.value = { logId:null,
+                mainType: mainTypes.value.length ? mainTypes.value[0].value : '',
+                subType: subTypes.value.length ? subTypes.value[0].value : '',
+                addressName:'', addressId:null, description:'',
+                inspectResult: resultTypes.value.length ? resultTypes.value[0].value : '',
+                hazardLevel:'', tenantName:'', tenantPhone:'', photos:[], inspectTime:'' };
             isEditing.value = false; viewMode.value = 'form';
         };
         const handleLogout = () => { localStorage.clear(); window.location.href = 'index.html'; };
 
         // 检查登录
         if (!TOKEN()) window.location.href = 'index.html';
+        // 加载字典数据
+        loadDicts();
 
-        return { viewMode, isEditing, submitting, form, mainTypes, subTypes, logs, lastLog, suggestions, mainLabel, subLabel,
+        return { viewMode, isEditing, submitting, form, mainTypes, subTypes, resultTypes, levelTypes, logs, lastLog, suggestions, mainLabel, subLabel, resultLabel, levelLabel,
             searchAddress, selectAddress, handleFileUpload, submitForm, loadHistory, editRecord, resetForm,
             handleLogout, resultLabel, onResultChange };
     }
