@@ -100,14 +100,14 @@
                 <span class="fs-flabel">主载体:</span>
                 <select v-model="queryParams.mainType" @change="handleQuery()" class="fs-sel">
                   <option value="">全部类型</option>
-                  <option v-for="t in mainTypes" :key="t" :value="t">{{ t }}</option>
+                  <option v-for="t in mainTypes" :key="t.value" :value="t.value">{{ t.label }}</option>
                 </select>
               </div>
               <div class="fs-filter-group active">
                 <span class="fs-flabel">细项:</span>
                 <select v-model="queryParams.subType" @change="handleQuery" class="fs-sel">
                   <option value="">全部细项</option>
-                  <option v-for="s in buildingSubTypes" :key="s" :value="s">{{ s }}</option>
+                  <option v-for="s in buildingSubTypes" :key="s.value" :value="s.value">{{ s.label }}</option>
                 </select>
               </div>
             </template>
@@ -230,8 +230,8 @@ export default {
       fsView: 'record', tenantCourtyard: '',
       queryParams: { pageNum: 1, pageSize: 10, courtyardId: null, mainType: '', subType: '', inspectResult: '' },
       editForm: {},
-      mainTypes: ['楼栋','街巷','公共场所','商企','工地'],
-      buildingSubTypes: ['燃气','消防','租户','独居','门卫','其他'],
+      mainTypes: [{label:'楼栋',value:'building'},{label:'街巷',value:'street'},{label:'公共场所',value:'public'},{label:'商企',value:'biz'},{label:'工地',value:'site'}],
+      buildingSubTypes: [{label:'燃气',value:'gas'},{label:'消防',value:'fire'},{label:'租户',value:'tenant'},{label:'独居',value:'solo'},{label:'门卫',value:'guard'},{label:'其他',value:'other'}],
       resultMap: { pass:'合格', hazard:'存在隐患', rectified:'已整改' },
       levelMap: { general:'一般', major:'较大', critical:'重大' },
       typeLabels: { building:'楼栋', street:'街巷', public:'公共场所', biz:'商企', site:'工地' }
