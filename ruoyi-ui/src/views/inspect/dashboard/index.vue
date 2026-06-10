@@ -34,20 +34,17 @@
             <el-form :inline="true" size="small" style="margin-bottom:12px">
               <el-form-item label="巡查类型">
                 <el-select v-model="queryParams.mainType" clearable @change="handleQuery()" placeholder="全部">
-                  <el-option label="楼栋" value="building"/><el-option label="街巷" value="street"/>
-                  <el-option label="公共场所" value="public"/><el-option label="商企" value="biz"/><el-option label="工地" value="site"/>
+                  <el-option v-for="d in dictData.placeType" :key="d.dictValue" :label="d.dictLabel" :value="d.dictValue"/>
                 </el-select>
               </el-form-item>
               <el-form-item label="细项">
                 <el-select v-model="queryParams.subType" clearable @change="handleQuery" placeholder="全部">
-                  <el-option label="燃气" value="gas"/><el-option label="消防" value="fire"/>
-                  <el-option label="租户" value="tenant"/><el-option label="独居" value="solo"/>
-                  <el-option label="门卫" value="guard"/><el-option label="其他" value="other"/>
+                  <el-option v-for="d in dictData.inspectItem" :key="d.dictValue" :label="d.dictLabel" :value="d.dictValue"/>
                 </el-select>
               </el-form-item>
               <el-form-item label="巡查结果">
                 <el-select v-model="queryParams.inspectResult" clearable @change="handleQuery" placeholder="全部">
-                  <el-option label="合格" value="pass"/><el-option label="存在隐患" value="hazard"/><el-option label="已整改" value="rectified"/>
+                  <el-option v-for="d in dictData.inspectResult" :key="d.dictValue" :label="d.dictLabel" :value="d.dictValue"/>
                 </el-select>
               </el-form-item>
               <el-form-item>
@@ -64,8 +61,8 @@
               <el-table-column label="巡查人" prop="createBy" width="100"/>
               <el-table-column label="地址" prop="addressName" min-width="150" show-overflow-tooltip/>
               <el-table-column label="类型" width="110"><template slot-scope="s">{{ typeLabel(s.row.mainType) }}<span v-if="s.row.subType"> / {{ s.row.subType }}</span></template></el-table-column>
-              <el-table-column label="级别" width="80"><template slot-scope="s"><el-tag v-if="s.row.hazardLevel" size="mini" :type="s.row.hazardLevel==='critical'?'danger':s.row.hazardLevel==='major'?'warning':'info'">{{ levelMap[s.row.hazardLevel] }}</el-tag><span v-else>-</span></template></el-table-column>
-              <el-table-column label="结果" width="90"><template slot-scope="s"><el-tag size="mini" :type="s.row.inspectResult==='pass'?'success':s.row.inspectResult==='rectified'?'info':'danger'">{{ resultMap[s.row.inspectResult] }}</el-tag></template></el-table-column>
+              <el-table-column label="级别" width="80"><template slot-scope="s"><el-tag v-if="s.row.hazardLevel" size="mini" :type="s.row.hazardLevel==='critical'?'danger':s.row.hazardLevel==='major'?'warning':'info'">{{ labelMap.hazardLevel[s.row.hazardLevel] }}</el-tag><span v-else>-</span></template></el-table-column>
+              <el-table-column label="结果" width="90"><template slot-scope="s"><el-tag size="mini" :type="s.row.inspectResult==='pass'?'success':s.row.inspectResult==='rectified'?'info':'danger'">{{ labelMap.inspectResult[s.row.inspectResult] }}</el-tag></template></el-table-column>
               <el-table-column label="操作" width="150"><template slot-scope="s"><el-button size="mini" type="text" @click="showDetail(s.row)">详情</el-button><el-button size="mini" type="text" @click="openEdit(s.row)">订正</el-button></template></el-table-column>
             </el-table>
             <pagination v-show="total>0" :total="total" :page.sync="queryParams.pageNum" :limit.sync="queryParams.pageSize" @pagination="handleQuery"/>
@@ -73,8 +70,8 @@
         </el-col>
       </el-row>
 
-      <edit-dlg :visible.sync="editVisible" :form="editForm" @submit="submitEdit"/>
-      <detail-dlg :visible.sync="detailVisible" :data="detail" :levelMap="levelMap" :resultMap="resultMap"/>
+      <edit-dlg :visible.sync="editVisible" :form="editForm" :dictData="dictData" @submit="submitEdit"/>
+      <detail-dlg :visible.sync="detailVisible" :data="detail" :levelMap="labelMap.hazardLevel" :resultMap="labelMap.inspectResult"/>
     </div>
 
     <!-- ==================== 大屏模式 ==================== -->
@@ -100,14 +97,14 @@
                 <span class="fs-flabel">主载体:</span>
                 <select v-model="queryParams.mainType" @change="handleQuery()" class="fs-sel">
                   <option value="">全部类型</option>
-                  <option v-for="t in mainTypes" :key="t.value" :value="t.value">{{ t.label }}</option>
+                  <option v-for="t in dictData.placeType" :key="t.dictValue" :value="t.dictValue">{{ t.dictLabel }}</option>
                 </select>
               </div>
               <div class="fs-filter-group active">
                 <span class="fs-flabel">细项:</span>
                 <select v-model="queryParams.subType" @change="handleQuery" class="fs-sel">
                   <option value="">全部细项</option>
-                  <option v-for="s in buildingSubTypes" :key="s.value" :value="s.value">{{ s.label }}</option>
+                  <option v-for="s in dictData.inspectItem" :key="s.dictValue" :value="s.dictValue">{{ s.dictLabel }}</option>
                 </select>
               </div>
             </template>
@@ -143,8 +140,8 @@
                 <td><span class="fs-worker">{{ row.createBy }}</span></td>
                 <td><span class="fs-type">{{ typeLabel(row.mainType) }}</span><span v-if="row.subType"> / {{ row.subType }}</span></td>
                 <td class="fs-td-addr">{{ row.addressName }}</td>
-                <td><span :class="['fs-lv','lv-'+row.hazardLevel]">{{ levelMap[row.hazardLevel]||'无' }}</span></td>
-                <td><span :class="['fs-res',row.inspectResult==='hazard'?'red':row.inspectResult==='rectified'?'green':'gray']">● {{ resultMap[row.inspectResult] }}</span></td>
+                <td><span :class="['fs-lv','lv-'+row.hazardLevel]">{{ labelMap.hazardLevel[row.hazardLevel]||'无' }}</span></td>
+                <td><span :class="['fs-res',row.inspectResult==='hazard'?'red':row.inspectResult==='rectified'?'green':'gray']">● {{ labelMap.inspectResult[row.inspectResult] }}</span></td>
                 <td><button @click="openEdit(row)" class="fs-ebtn">修正详情</button></td>
               </tr>
             </tbody>
@@ -175,10 +172,10 @@
       <div v-if="editVisible" class="fs-modal" @click.self="editVisible=false">
         <div class="fs-mc"><h3>📋 记录订正 <small>{{ editForm.logCode }}</small></h3>
           <div class="fs-mgrid">
-            <div><label>主载体</label><select v-model="editForm.mainType" class="fs-mselect"><option value="building">楼栋</option><option value="street">街巷</option><option value="public">公共场所</option><option value="biz">商企</option><option value="site">工地</option></select></div>
-            <div><label>细项</label><input v-model="editForm.subType" class="fs-minput"></div>
-            <div><label>结果</label><select v-model="editForm.inspectResult" class="fs-mselect"><option value="pass">合格</option><option value="hazard">存在隐患</option><option value="rectified">已整改</option></select></div>
-            <div><label>级别</label><select v-model="editForm.hazardLevel" class="fs-mselect"><option value="">无</option><option value="general">一般</option><option value="major">较大</option><option value="critical">重大</option></select></div>
+            <div><label>主载体</label><select v-model="editForm.mainType" class="fs-mselect"><option v-for="d in dictData.placeType" :key="d.dictValue" :value="d.dictValue">{{ d.dictLabel }}</option></select></div>
+            <div><label>细项</label><select v-model="editForm.subType" class="fs-mselect"><option v-for="d in dictData.inspectItem" :key="d.dictValue" :value="d.dictValue">{{ d.dictLabel }}</option></select></div>
+            <div><label>结果</label><select v-model="editForm.inspectResult" class="fs-mselect"><option v-for="d in dictData.inspectResult" :key="d.dictValue" :value="d.dictValue">{{ d.dictLabel }}</option></select></div>
+            <div><label>级别</label><select v-model="editForm.hazardLevel" class="fs-mselect"><option value="">无</option><option v-for="d in dictData.hazardLevel" :key="d.dictValue" :value="d.dictValue">{{ d.dictLabel }}</option></select></div>
             <div style="grid-column:1/-1"><label>地址</label><input v-model="editForm.addressName" class="fs-minput"></div>
             <div style="grid-column:1/-1"><label>描述</label><textarea v-model="editForm.description" rows="3" class="fs-minput"></textarea></div>
           </div>
@@ -192,20 +189,21 @@
 <script>
 import { listLog, getLog, updateLog, listTenant } from '@/api/inspect/dashboard'
 import { listCourtyard } from '@/api/inspect/dashboard'
+import { getDicts } from '@/api/system/dict/data'
 
 // 子组件
 const EditDlg = {
-  props: { visible: Boolean, form: Object },
+  props: { visible: Boolean, form: Object, dictData: Object },
   template: `<el-dialog title="记录订正" :visible.sync="show" width="600px">
     <el-form :model="f" label-width="80px" size="small">
-      <el-form-item label="巡查类型"><el-select v-model="f.mainType"><el-option label="楼栋" value="building"/><el-option label="街巷" value="street"/><el-option label="公共场所" value="public"/><el-option label="商企" value="biz"/><el-option label="工地" value="site"/></el-select></el-form-item>
-      <el-form-item label="巡查项目"><el-input v-model="f.subType"/></el-form-item>
-      <el-form-item label="巡查结果"><el-select v-model="f.inspectResult"><el-option label="合格" value="pass"/><el-option label="存在隐患" value="hazard"/><el-option label="已整改" value="rectified"/></el-select></el-form-item>
-      <el-form-item label="隐患级别"><el-select v-model="f.hazardLevel"><el-option label="无" value=""/><el-option label="一般" value="general"/><el-option label="较大" value="major"/><el-option label="重大" value="critical"/></el-select></el-form-item>
+      <el-form-item label="巡查类型"><el-select v-model="f.mainType" clearable><el-option v-for="d in options.placeType" :key="d.dictValue" :label="d.dictLabel" :value="d.dictValue"/></el-select></el-form-item>
+      <el-form-item label="巡查项目"><el-select v-model="f.subType" clearable><el-option v-for="d in options.inspectItem" :key="d.dictValue" :label="d.dictLabel" :value="d.dictValue"/></el-select></el-form-item>
+      <el-form-item label="巡查结果"><el-select v-model="f.inspectResult" clearable><el-option v-for="d in options.inspectResult" :key="d.dictValue" :label="d.dictLabel" :value="d.dictValue"/></el-select></el-form-item>
+      <el-form-item label="隐患级别"><el-select v-model="f.hazardLevel" clearable><el-option label="无" value=""/><el-option v-for="d in options.hazardLevel" :key="d.dictValue" :label="d.dictLabel" :value="d.dictValue"/></el-select></el-form-item>
       <el-form-item label="巡查地址"><el-input v-model="f.addressName"/></el-form-item>
       <el-form-item label="描述"><el-input v-model="f.description" type="textarea" :rows="3"/></el-form-item>
     </el-form><span slot="footer"><el-button @click="show=false">取消</el-button><el-button type="primary" @click="$emit('submit');show=false">确认同步</el-button></span></el-dialog>`,
-  computed: { show: { get(){return this.visible}, set(v){this.$emit('update:visible',v)} }, f(){return this.form} }
+  computed: { show: { get(){return this.visible}, set(v){this.$emit('update:visible',v)} }, f(){return this.form}, options(){return this.dictData||{}} }
 };
 
 const DetailDlg = {
@@ -230,11 +228,10 @@ export default {
       fsView: 'record', tenantCourtyard: '',
       queryParams: { pageNum: 1, pageSize: 10, courtyardId: null, mainType: '', subType: '', inspectResult: '' },
       editForm: {},
-      mainTypes: [{label:'楼栋',value:'building'},{label:'街巷',value:'street'},{label:'公共场所',value:'public'},{label:'商企',value:'biz'},{label:'工地',value:'site'}],
-      buildingSubTypes: [{label:'燃气',value:'gas'},{label:'消防',value:'fire'},{label:'租户',value:'tenant'},{label:'独居',value:'solo'},{label:'门卫',value:'guard'},{label:'其他',value:'other'}],
-      resultMap: { pass:'合格', hazard:'存在隐患', rectified:'已整改' },
-      levelMap: { general:'一般', major:'较大', critical:'重大' },
-      typeLabels: { building:'楼栋', street:'街巷', public:'公共场所', biz:'商企', site:'工地' }
+      // 字典数据（从数据库加载）
+      dictData: { placeType: [], inspectItem: [], inspectResult: [], hazardLevel: [] },
+      // 字典映射（供快速查找label）
+      labelMap: { placeType: {}, inspectItem: {}, inspectResult: {}, hazardLevel: {} }
     }
   },
   computed: {
@@ -243,19 +240,36 @@ export default {
     rectifiedTotal() { return this.total>0 ? this.logList.filter(l=>l.inspectResult==='rectified').length : 0 },
     fsTitle() {
       const c = this.courtyards.find(x=>x.courtyardId===this.queryParams.courtyardId);
-      if (this.queryParams.inspectResult==='hazard') return '待整改隐患';
-      if (this.queryParams.inspectResult==='rectified') return '已整改完成';
+      if (this.queryParams.inspectResult) return this.labelMap.inspectResult[this.queryParams.inspectResult];
       return c ? c.courtyardName : '';
     },
     tenantCourtyards() { return [...new Set(this.tenantList.map(t=>t.courtyardName).filter(Boolean))]; }
   },
   watch: { fsView(v) { if(v==='tenant') this.loadTenants(); else this.handleQuery(); } },
-  created() { this.loadCourtyards(); this.handleQuery(); },
+  created() { this.loadDicts(); this.loadCourtyards(); this.handleQuery(); },
   mounted() { document.addEventListener('keydown', this.escHandler); },
   beforeDestroy() { document.removeEventListener('keydown', this.escHandler); },
   methods: {
     escHandler(e) { if(e.key==='Escape'&&this.fullscreen) this.fullscreen=false; },
-    typeLabel(v) { return this.typeLabels[v]||v; },
+    // 从数据库字典加载枚举值
+    loadDicts() {
+      Promise.all([
+        getDicts('ins_place_type'),
+        getDicts('ins_inspect_item'),
+        getDicts('ins_inspect_result'),
+        getDicts('ins_hazard_level')
+      ]).then(([place, item, result, level]) => {
+        this.dictData.placeType = place.data || [];
+        this.dictData.inspectItem = item.data || [];
+        this.dictData.inspectResult = result.data || [];
+        this.dictData.hazardLevel = level.data || [];
+        // 构建快速查找映射
+        [['placeType', this.dictData.placeType], ['inspectItem', this.dictData.inspectItem],
+         ['inspectResult', this.dictData.inspectResult], ['hazardLevel', this.dictData.hazardLevel]]
+          .forEach(([key, arr]) => { this.labelMap[key] = {}; arr.forEach(d => { this.labelMap[key][d.dictValue] = d.dictLabel; }); });
+      });
+    },
+    typeLabel(v) { return this.labelMap.placeType[v] || v; },
     loadCourtyards() { listCourtyard().then(res => { this.courtyards = res.data||[]; }); },
     handleQuery() {
       this.loading = true; this.fsView = 'record';
