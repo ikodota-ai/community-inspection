@@ -123,9 +123,30 @@ const { createApp, ref } = Vue;
 // 自动使用当前域名，nginx代理到后端
 const API = window.location.protocol + '//' + window.location.host;
 const TOKEN = () => localStorage.getItem('token')||'';
-// 仅带 token，不预设 Content-Type（GET 请求不需要，POST/PUT 各自指定）
+
+// 检查登录状态，未登录跳转到登录页（记住当前页）
+if (!TOKEN()) {
+  localStorage.setItem('returnUrl', window.location.href);
+  window.location.href = location.pathname.replace(/worker\.html$/,'index.html');
+}
 const authHeaders = () => ({ 'Authorization': 'Bearer '+TOKEN() });
 const jsonHeaders = () => ({ 'Authorization': 'Bearer '+TOKEN(), 'Content-Type': 'application/json' });
+
+// 统一 fetch 封装：401 时自动跳回登录页
+async function apiFetch(url, options = {}) {
+  const res = await apiFetch(url, options);
+  if (res.status === 401 || (res.headers.get('content-type')||'').includes('json')) {
+    const clone = res.clone();
+    const data = await clone.json().catch(() => ({}));
+    if (data.code === 401) {
+      localStorage.setItem('returnUrl', window.location.href);
+      localStorage.removeItem('token');
+      window.location.href = location.pathname.replace(/worker\.html$/,'index.html');
+      throw new Error('auth');
+    }
+  }
+  return res;
+}
 
 createApp({
     setup() {
@@ -176,7 +197,7 @@ createApp({
                 const kw = form.value.addressName;
                 if (kw.length < 1) { suggestions.value = []; return; }
                 try {
-                    const res = await fetch(API+'/h5/address/search?keyword='+encodeURIComponent(kw), { headers: authHeaders() });
+                    const res = await apiFetch(API+'/h5/address/search?keyword='+encodeURIComponent(kw), { headers: authHeaders() });
                     const data = await res.json();
                     suggestions.value = data.data || [];
                 } catch(e) { console.error(e); }
@@ -199,7 +220,7 @@ createApp({
                 if (form.value.photos.length >= 9) break;
                 const fd = new FormData(); fd.append('file', file);
                 try {
-                    const res = await fetch(API+'/common/upload', { method:'POST', headers:{'Authorization':'Bearer '+TOKEN()}, body:fd });
+                    const res = await apiFetch(API+'/common/upload', { method:'POST', headers:{'Authorization':'Bearer '+TOKEN()}, body:fd });
                     const data = await res.json();
                     if (data.code === 200) form.value.photos.push({ photoUrl: data.url||data.fileName, sortOrder: form.value.photos.length, preview: URL.createObjectURL(file) });
                 } catch(e) { console.error(e); }
@@ -218,7 +239,7 @@ createApp({
                 const url = isEditing.value ? API+'/h5/log' : API+'/h5/log';
                 const method = isEditing.value ? 'PUT' : 'POST';
                 if (isEditing.value) body.logId = form.value.logId;
-                const res = await fetch(url, { method, headers: jsonHeaders(), body: JSON.stringify(body) });
+                const res = await apiFetch(url, { method, headers: jsonHeaders(), body: JSON.stringify(body) });
                 const data = await res.json();
                 if (data.code === 200) {
                     if (isEditing.value) { form.value.logId = null; await loadHistory(); viewMode.value = 'history'; }
@@ -236,7 +257,7 @@ createApp({
         // ==== 档案 ====
         const loadHistory = async () => {
             try {
-                const res = await fetch(API+'/h5/log/myList?pageNum=1&pageSize=50', { headers: authHeaders() });
+                const res = await apiFetch(API+'/h5/log/myList?pageNum=1&pageSize=50', { headers: authHeaders() });
                 const data = await res.json();
                 logs.value = data.rows || [];
                 viewMode.value = 'history';

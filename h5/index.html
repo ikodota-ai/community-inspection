@@ -65,7 +65,9 @@ createApp({
                 if (data.code === 200 && data.token) {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('username', username.value);
-                    window.location.href = 'worker.html';
+                    const returnUrl = localStorage.getItem('returnUrl');
+                    localStorage.removeItem('returnUrl');
+                    window.location.href = returnUrl || 'worker.html';
                 } else {
                     errorMsg.value = data.msg || '登录失败';
                 }
