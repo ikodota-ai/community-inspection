@@ -132,23 +132,34 @@ if (!TOKEN()) {
 const authHeaders = () => ({ 'Authorization': 'Bearer '+TOKEN() });
 const jsonHeaders = () => ({ 'Authorization': 'Bearer '+TOKEN(), 'Content-Type': 'application/json' });
 
-// 统一请求封装：拦截401自动跳登录
-async function apiFetch(url, options = {}) {
+// 统一请求封装：返回json数据，401时自动跳登录
+async function apiJson(url, options = {}) {
   const res = await fetch(url, options);
-  const ct = res.headers.get('content-type') || '';
-  if (res.status === 401 || ct.includes('json')) {
-    try {
-      const txt = await res.clone().text();
-      const data = JSON.parse(txt);
-      if (data.code === 401) {
-        localStorage.setItem('returnUrl', window.location.href);
-        localStorage.removeItem('token');
-        window.location.href = location.pathname.replace(/worker\.html$/,'index.html');
-        return Promise.reject(new Error('AUTH_EXPIRED'));
-      }
-    } catch(e) { if (e.message === 'AUTH_EXPIRED') throw e; }
+  if (res.status === 401) {
+    localStorage.setItem('returnUrl', window.location.href);
+    localStorage.removeItem('token');
+    window.location.href = location.pathname.replace(/worker\.html$/,'index.html');
+    throw new Error('AUTH_EXPIRED');
   }
-  return res;
+  const data = await res.json();
+  if (data.code === 401) {
+    localStorage.setItem('returnUrl', window.location.href);
+    localStorage.removeItem('token');
+    window.location.href = location.pathname.replace(/worker\.html$/,'index.html');
+    throw new Error('AUTH_EXPIRED');
+  }
+  return data;
+}
+// 文件上传：只拦截不读body
+async function apiUpload(url, options = {}) {
+  const res = await fetch(url, options);
+  if (res.status === 401) {
+    localStorage.setItem('returnUrl', window.location.href);
+    localStorage.removeItem('token');
+    window.location.href = location.pathname.replace(/worker\.html$/,'index.html');
+    throw new Error('AUTH_EXPIRED');
+  }
+  return res.json();
 }
 
 createApp({
@@ -169,10 +180,10 @@ createApp({
         const loadDicts = async () => {
           try {
             const [p, i, r, l] = await Promise.all([
-              apiFetch(API+'/system/dict/data/type/ins_place_type',{headers:authHeaders()}).then(r=>r.json()),
-              apiFetch(API+'/system/dict/data/type/ins_inspect_item',{headers:authHeaders()}).then(r=>r.json()),
-              apiFetch(API+'/system/dict/data/type/ins_inspect_result',{headers:authHeaders()}).then(r=>r.json()),
-              apiFetch(API+'/system/dict/data/type/ins_hazard_level',{headers:authHeaders()}).then(r=>r.json())
+              apiJson(API+'/system/dict/data/type/ins_place_type',{headers:authHeaders()}),
+              apiJson(API+'/system/dict/data/type/ins_inspect_item',{headers:authHeaders()}),
+              apiJson(API+'/system/dict/data/type/ins_inspect_result',{headers:authHeaders()}),
+              apiJson(API+'/system/dict/data/type/ins_hazard_level',{headers:authHeaders()})
             ]);
             mainTypes.value = (p.data||[]).map(d=>({value:d.dictValue,label:d.dictLabel}));
             subTypes.value = (i.data||[]).map(d=>({value:d.dictValue,label:d.dictLabel}));
@@ -200,8 +211,7 @@ createApp({
                 const kw = form.value.addressName;
                 if (kw.length < 1) { suggestions.value = []; return; }
                 try {
-                    const res = await apiFetch(API+'/h5/address/search?keyword='+encodeURIComponent(kw), { headers: authHeaders() });
-                    const data = await res.json();
+                    const data = await apiJson(API+'/h5/address/search?keyword='+encodeURIComponent(kw), { headers: authHeaders() });
                     suggestions.value = data.data || [];
                 } catch(e) { console.error(e); }
             }, 300);
@@ -223,8 +233,7 @@ createApp({
                 if (form.value.photos.length >= 9) break;
                 const fd = new FormData(); fd.append('file', file);
                 try {
-                    const res = await apiFetch(API+'/common/upload', { method:'POST', headers:{'Authorization':'Bearer '+TOKEN()}, body:fd });
-                    const data = await res.json();
+                    const data = await apiUpload(API+'/common/upload', { method:'POST', headers:{'Authorization':'Bearer '+TOKEN()}, body:fd });
                     if (data.code === 200) form.value.photos.push({ photoUrl: data.url||data.fileName, sortOrder: form.value.photos.length, preview: URL.createObjectURL(file) });
                 } catch(e) { console.error(e); }
             }
@@ -242,8 +251,7 @@ createApp({
                 const url = isEditing.value ? API+'/h5/log' : API+'/h5/log';
                 const method = isEditing.value ? 'PUT' : 'POST';
                 if (isEditing.value) body.logId = form.value.logId;
-                const res = await apiFetch(url, { method, headers: jsonHeaders(), body: JSON.stringify(body) });
-                const data = await res.json();
+                const data = await apiJson(url, { method, headers: jsonHeaders(), body: JSON.stringify(body) });
                 if (data.code === 200) {
                     if (isEditing.value) { form.value.logId = null; await loadHistory(); viewMode.value = 'history'; }
                     else { lastLog.value = body; viewMode.value = 'success'; }
@@ -260,8 +268,7 @@ createApp({
         // ==== 档案 ====
         const loadHistory = async () => {
             try {
-                const res = await apiFetch(API+'/h5/log/myList?pageNum=1&pageSize=50', { headers: authHeaders() });
-                const data = await res.json();
+                const data = await apiJson(API+'/h5/log/myList?pageNum=1&pageSize=50', { headers: authHeaders() });
                 logs.value = data.rows || [];
                 viewMode.value = 'history';
             } catch(e) { alert('加载失败: '+e.message); }
