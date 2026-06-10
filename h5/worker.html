@@ -169,10 +169,10 @@ createApp({
         const loadDicts = async () => {
           try {
             const [p, i, r, l] = await Promise.all([
-              fetch(API+'/system/dict/data/type/ins_place_type',{headers:authHeaders()}).then(r=>r.json()),
-              fetch(API+'/system/dict/data/type/ins_inspect_item',{headers:authHeaders()}).then(r=>r.json()),
-              fetch(API+'/system/dict/data/type/ins_inspect_result',{headers:authHeaders()}).then(r=>r.json()),
-              fetch(API+'/system/dict/data/type/ins_hazard_level',{headers:authHeaders()}).then(r=>r.json())
+              apiFetch(API+'/system/dict/data/type/ins_place_type',{headers:authHeaders()}).then(r=>r.json()),
+              apiFetch(API+'/system/dict/data/type/ins_inspect_item',{headers:authHeaders()}).then(r=>r.json()),
+              apiFetch(API+'/system/dict/data/type/ins_inspect_result',{headers:authHeaders()}).then(r=>r.json()),
+              apiFetch(API+'/system/dict/data/type/ins_hazard_level',{headers:authHeaders()}).then(r=>r.json())
             ]);
             mainTypes.value = (p.data||[]).map(d=>({value:d.dictValue,label:d.dictLabel}));
             subTypes.value = (i.data||[]).map(d=>({value:d.dictValue,label:d.dictLabel}));
