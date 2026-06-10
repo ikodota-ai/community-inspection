@@ -123,7 +123,9 @@ const { createApp, ref } = Vue;
 // 自动使用当前域名，nginx代理到后端
 const API = window.location.protocol + '//' + window.location.host;
 const TOKEN = () => localStorage.getItem('token')||'';
-const AUTH = () => ({ headers: { 'Authorization': 'Bearer '+TOKEN(), 'Content-Type': 'application/json' } });
+// 仅带 token，不预设 Content-Type（GET 请求不需要，POST/PUT 各自指定）
+const authHeaders = () => ({ 'Authorization': 'Bearer '+TOKEN() });
+const jsonHeaders = () => ({ 'Authorization': 'Bearer '+TOKEN(), 'Content-Type': 'application/json' });
 
 createApp({
     setup() {
@@ -143,10 +145,10 @@ createApp({
         const loadDicts = async () => {
           try {
             const [p, i, r, l] = await Promise.all([
-              fetch(API+'/system/dict/data/type/ins_place_type',{headers:AUTH().headers}).then(r=>r.json()),
-              fetch(API+'/system/dict/data/type/ins_inspect_item',{headers:AUTH().headers}).then(r=>r.json()),
-              fetch(API+'/system/dict/data/type/ins_inspect_result',{headers:AUTH().headers}).then(r=>r.json()),
-              fetch(API+'/system/dict/data/type/ins_hazard_level',{headers:AUTH().headers}).then(r=>r.json())
+              fetch(API+'/system/dict/data/type/ins_place_type',{headers:authHeaders()}).then(r=>r.json()),
+              fetch(API+'/system/dict/data/type/ins_inspect_item',{headers:authHeaders()}).then(r=>r.json()),
+              fetch(API+'/system/dict/data/type/ins_inspect_result',{headers:authHeaders()}).then(r=>r.json()),
+              fetch(API+'/system/dict/data/type/ins_hazard_level',{headers:authHeaders()}).then(r=>r.json())
             ]);
             mainTypes.value = (p.data||[]).map(d=>({value:d.dictValue,label:d.dictLabel}));
             subTypes.value = (i.data||[]).map(d=>({value:d.dictValue,label:d.dictLabel}));
@@ -174,7 +176,7 @@ createApp({
                 const kw = form.value.addressName;
                 if (kw.length < 1) { suggestions.value = []; return; }
                 try {
-                    const res = await fetch(API+'/h5/address/search?keyword='+encodeURIComponent(kw), { headers: AUTH().headers });
+                    const res = await fetch(API+'/h5/address/search?keyword='+encodeURIComponent(kw), { headers: authHeaders() });
                     const data = await res.json();
                     suggestions.value = data.data || [];
                 } catch(e) { console.error(e); }
@@ -216,7 +218,7 @@ createApp({
                 const url = isEditing.value ? API+'/h5/log' : API+'/h5/log';
                 const method = isEditing.value ? 'PUT' : 'POST';
                 if (isEditing.value) body.logId = form.value.logId;
-                const res = await fetch(url, { method, headers: AUTH().headers, body: JSON.stringify(body) });
+                const res = await fetch(url, { method, headers: jsonHeaders(), body: JSON.stringify(body) });
                 const data = await res.json();
                 if (data.code === 200) {
                     if (isEditing.value) { form.value.logId = null; await loadHistory(); viewMode.value = 'history'; }
@@ -234,7 +236,7 @@ createApp({
         // ==== 档案 ====
         const loadHistory = async () => {
             try {
-                const res = await fetch(API+'/h5/log/myList?pageNum=1&pageSize=50', { headers: AUTH().headers });
+                const res = await fetch(API+'/h5/log/myList?pageNum=1&pageSize=50', { headers: authHeaders() });
                 const data = await res.json();
                 logs.value = data.rows || [];
                 viewMode.value = 'history';
