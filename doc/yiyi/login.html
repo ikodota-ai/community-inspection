@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 智能巡检与风险防控系统</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <style>
+        .login-gradient {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(12px);
+        }
+        .input-focus {
+            transition: all 0.3s ease;
+        }
+        .input-focus:focus {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+        }
+    </style>
+</head>
+<body class="login-gradient min-h-screen flex items-center justify-center p-4">
+
+<div id="app" class="max-w-md w-full animate__animated animate__fadeIn">
+    <div class="text-center mb-10">
+        <div class="inline-flex items-center justify-center w-20 h-20 bg-blue-600 rounded-3xl shadow-2xl shadow-blue-500/30 mb-6 rotate-3">
+            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+            </svg>
+        </div>
+        <h1 class="text-3xl font-extrabold text-white tracking-tight">风险防控系统</h1>
+        <p class="text-slate-400 text-sm mt-3 tracking-widest uppercase">Intelligent Inspection Platform</p>
+    </div>
+
+    <div class="glass-card rounded-[2.5rem] p-10 shadow-2xl border border-white/20">
+        <form @submit.prevent="handleLogin" class="space-y-7">
+            
+            <div class="space-y-2">
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">访问账号</label>
+                <div class="relative">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    </span>
+                    <input type="text" v-model="username" required
+                        class="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none input-focus text-slate-700"
+                        placeholder="请输入您的用户名">
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">安全密码</label>
+                <div class="relative">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    </span>
+                    <input type="password" v-model="password" required
+                        class="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none input-focus text-slate-700"
+                        placeholder="请输入登录密码">
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <button type="submit" 
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-xl shadow-blue-500/40 transition-all active:scale-[0.97] flex items-center justify-center gap-2">
+                    <span>进入系统</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
+                </button>
+            </div>
+        </form>
+
+        <div class="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+            <label class="flex items-center cursor-pointer hover:text-slate-600 transition">
+                <input type="checkbox" class="mr-2 rounded border-slate-300 text-blue-600 focus:ring-blue-500"> 自动登录
+            </label>
+            <a href="#" class="hover:text-blue-600 font-medium transition">技术支持</a>
+        </div>
+    </div>
+
+    <footer class="mt-10 text-center space-y-2">
+        <p class="text-slate-500 text-[10px] tracking-widest uppercase opacity-60">
+            Secure Inspection System v2.0
+        </p>
+        <div class="flex justify-center gap-4 text-[10px] text-slate-600 font-bold uppercase">
+            <span>隐患排查</span>
+            <span>•</span>
+            <span>双林社区</span>
+            <span>•</span>
+            <span>安全守望</span>
+        </div>
+    </footer>
+</div>
+
+<script>
+const { createApp, ref } = Vue;
+
+createApp({
+    setup() {
+        const username = ref('');
+        const password = ref('');
+
+        const handleLogin = () => {
+            // 业务逻辑：角色识别通常由后端根据账号自动判定
+            console.log('登录尝试:', username.value);
+            
+            // 验证通过后跳转至主页面
+            alert('验证成功，正在根据您的账号权限加载工作台...');
+            // window.location.href = 'inspection_system.html';
+        };
+
+        return { username, password, handleLogin };
+    }
+}).mount('#app');
+</script>
+
+</body>
+</html>

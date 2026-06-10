@@ -77,6 +77,9 @@ public class SysUser extends BaseEntity
     /** 密码最后更新时间 */
     private Date pwdUpdateDate;
 
+    /** 所属院落ID */
+    private Long courtyardId;
+
     /** 部门对象 */
     @Excels({
         @Excel(name = "部门名称", targetAttr = "deptName", type = Type.EXPORT),
@@ -258,6 +261,16 @@ public class SysUser extends BaseEntity
     public void setPwdUpdateDate(Date pwdUpdateDate)
     {
         this.pwdUpdateDate = pwdUpdateDate;
+    }
+
+    public Long getCourtyardId()
+    {
+        return courtyardId;
+    }
+
+    public void setCourtyardId(Long courtyardId)
+    {
+        this.courtyardId = courtyardId;
     }
 
     public SysDept getDept()

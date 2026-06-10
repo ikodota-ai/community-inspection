@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>风险防控大屏 - 管理员终端</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .admin-gradient { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+        .glass-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .active-courtyard { background: rgba(59, 130, 246, 0.2) !important; border-left: 4px solid #3b82f6 !important; color: white !important; }
+        .tenant-chip-active { background: #f97316 !important; color: white !important; border-color: #f97316 !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .modal-overlay { background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(8px); }
+        .db-input { background: #1e293b !important; border: 1px solid #334155 !important; color: white !important; width: 100%; padding: 0.75rem; border-radius: 0.75rem; font-size: 0.875rem; outline: none; transition: border 0.2s; }
+        .db-input:focus { border-color: #3b82f6 !important; }
+        .page-btn { @apply px-3 py-1 rounded bg-slate-800 text-slate-400 hover:bg-blue-600 hover:text-white disabled:opacity-30 disabled:hover:bg-slate-800 disabled:cursor-not-allowed transition-all; }
+        [v-cloak] { display: none; }
+        
+        .img-grid-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        .img-item { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); transition: transform 0.2s; cursor: pointer; }
+        .img-item:hover { transform: scale(1.05); border-color: #3b82f6; }
+        
+        .level-tag { padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+        .level-无 { background: rgba(148, 163, 184, 0.1); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.2); }
+        .level-一般 { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .level-严重 { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .level-紧急 { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.5); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body class="admin-gradient min-h-screen text-slate-200">
+
+<div id="app" v-cloak class="flex h-screen overflow-hidden">
+    
+    <aside class="w-80 border-r border-slate-800 flex flex-col glass-card">
+        <div class="p-6 border-b border-slate-800">
+            <h2 class="text-blue-400 font-black tracking-widest text-lg">院落导航</h2>
+            <p class="text-[10px] text-slate-500 uppercase mt-1">13个指定院落 · 实时监控</p>
+        </div>
+        <nav class="flex-1 overflow-y-auto no-scrollbar py-2">
+            <div @click="setGlobalView" :class="['w-full text-left px-6 py-4 text-sm transition-all flex justify-between items-center cursor-pointer border-b border-slate-800/50 hover:bg-white/5', (selectedYard === '' && !showOnlyUrgent && !showOnlyFixed && viewType === 'record') ? 'active-courtyard' : 'text-slate-400 border-l-4 border-transparent']">
+                <span class="font-bold">🌐 全辖区汇总视图</span>
+            </div>
+            
+            <div v-for="yard in sortedCourtyardList" :key="yard.name" 
+                :class="['w-full text-left px-4 py-4 text-xs transition-all flex items-center cursor-pointer border-b border-slate-800/50 hover:bg-white/5', (selectedYard === yard.name && viewType === 'record') ? 'active-courtyard' : 'text-slate-400 border-l-4 border-transparent']">
+                <div class="flex-1 min-w-0" @click="selectYard(yard.name)">
+                    <span class="font-bold block truncate text-[13px] mb-1">{{ yard.name }}</span>
+                    <div class="flex gap-2">
+                        <span class="bg-emerald-900/30 text-emerald-400 px-1.5 py-0.5 rounded font-mono text-[9px]">已巡 {{ yard.done }}</span>
+                        <span class="bg-red-900/30 text-red-400 px-1.5 py-0.5 rounded font-mono text-[9px]" @click.stop="showYardUrgent(yard.name)">隐患 {{ yard.urgent }}</span>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <header class="h-16 border-b border-slate-800 flex items-center justify-between px-8 bg-slate-900/40">
+            <div class="flex items-center gap-6">
+                <span class="text-xl font-bold text-white tracking-tight">{{ viewType === 'tenant' ? '租户信息库' : (selectedYard || '全辖区汇总') }}</span>
+                
+                <div v-if="viewType === 'record'" class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 bg-slate-800/50 rounded-lg px-3 py-1 border border-slate-700">
+                        <span class="text-[10px] text-slate-500 font-bold uppercase">主载体:</span>
+                        <select v-model="filter.mainType" @change="handleMainTypeChange" class="bg-transparent text-[11px] outline-none text-blue-400 font-bold cursor-pointer">
+                            <option value="全部">全部类型</option>
+                            <option v-for="t in mainTypes" :key="t" :value="t">{{ t }}</option>
+                        </select>
+                    </div>
+                    <div v-if="filter.mainType === '楼栋'" class="flex items-center gap-2 bg-blue-500/10 rounded-lg px-3 py-1 border border-blue-500/30">
+                        <span class="text-[10px] text-slate-500 font-bold uppercase">细项:</span>
+                        <select v-model="filter.subType" @change="currentPage = 1" class="bg-transparent text-[11px] outline-none text-blue-400 font-bold cursor-pointer">
+                            <option value="全部">全部细项</option>
+                            <option v-for="s in buildingSubTypes" :key="s" :value="s">{{ s }}</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <button @click="logoutConfirm.show = true" class="px-5 py-2 bg-red-500/10 text-red-400 rounded-xl border border-red-500/20 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all text-sm font-bold flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                退出系统
+            </button>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8 space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div @click="setGlobalView" :class="['glass-card p-6 rounded-3xl border-t-2 border-blue-500 cursor-pointer', (viewType === 'record' && !showOnlyUrgent && !showOnlyFixed) ? 'bg-blue-500/10' : '']">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase">巡检总量</p>
+                    <p class="text-3xl font-mono font-black text-white">{{ virtualDB.length }}</p>
+                </div>
+                <div @click="showGlobalUrgent" :class="['glass-card p-6 rounded-3xl border-t-2 border-red-500 cursor-pointer', (viewType === 'record' && showOnlyUrgent) ? 'bg-red-500/10' : '']">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase">待整改隐患</p>
+                    <p class="text-3xl font-mono font-black text-white">{{ totalUrgentCount }}</p>
+                </div>
+                <div @click="showGlobalFixed" :class="['glass-card p-6 rounded-3xl border-t-2 border-emerald-500 cursor-pointer', (viewType === 'record' && showOnlyFixed) ? 'bg-emerald-500/10' : '']">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase">已整改完成</p>
+                    <p class="text-3xl font-mono font-black text-white">{{ totalFixedCount }}</p>
+                </div>
+                <div @click="viewType = 'tenant'; showOnlyUrgent = false; showOnlyFixed = false; selectedYard = '';" :class="['glass-card p-6 rounded-3xl border-l-4 border-orange-500 cursor-pointer', viewType === 'tenant' ? 'bg-orange-500/10' : '']">
+                    <p class="text-[10px] text-orange-500 font-bold uppercase">租户信息库</p>
+                    <p class="text-3xl font-mono font-black text-orange-400">{{ tenantDB.length }}</p>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-[2rem] overflow-hidden flex flex-col min-h-[600px]">
+                <div class="px-8 py-6 border-b border-slate-800 bg-white/5">
+                    <div v-if="viewType === 'tenant'" class="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                        <button @click="selectedYard = ''" :class="['px-4 py-2 rounded-xl text-xs font-bold border transition-all whitespace-nowrap', selectedYard === '' ? 'tenant-chip-active' : 'border-slate-700 bg-slate-800/50 text-slate-400']">全部院落</button>
+                        <button v-for="yard in yards" :key="yard" @click="selectedYard = yard" :class="['px-4 py-2 rounded-xl text-xs font-bold border transition-all whitespace-nowrap', selectedYard === yard ? 'tenant-chip-active' : 'border-slate-700 bg-slate-800/50 text-slate-400']">{{ yard }}</button>
+                    </div>
+                    <div v-else class="font-bold text-sm text-blue-400">📋 巡查流水记录流水记录</div>
+                </div>
+                
+                <div class="flex-1 overflow-x-auto">
+                    <table v-if="viewType === 'record'" class="w-full text-left text-[11px]">
+                        <thead class="bg-slate-800/30 text-slate-500 uppercase">
+                            <tr>
+                                <th class="px-6 py-4">时间</th><th class="px-4 py-4">上传人</th><th class="px-4 py-4">类别/细项</th><th class="px-4 py-4">具体地址</th><th class="px-4 py-4">级别</th><th class="px-4 py-4">状态</th><th class="px-6 py-4 text-center">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/50">
+                            <tr v-for="(item, i) in paginatedRecords" :key="i" class="hover:bg-white/5 transition">
+                                <td class="px-6 py-5 text-slate-400 font-mono">{{ item.syncTime }}</td>
+                                <td class="px-4 py-5"><span class="text-white font-bold">{{ item.workerName }}</span><div class="text-[9px] text-slate-500">{{ item.workerId }}</div></td>
+                                <td class="px-4 py-5"><span class="text-blue-400 font-bold">{{ item.mainType }}</span><span class="text-slate-600 mx-1">/</span>{{ item.subType }}</td>
+                                <td class="px-4 py-5 font-bold truncate max-w-[150px]">{{ item.fullAddress }}</td>
+                                <td class="px-4 py-5"><span :class="['level-tag', 'level-' + item.level]">{{ item.level }}</span></td>
+                                <td class="px-4 py-5"><span :class="item.result === '待整改' ? 'text-red-400' : (item.result === '已整改' ? 'text-emerald-400' : 'text-slate-500')">● {{ item.result }}</span></td>
+                                <td class="px-6 py-5 text-center"><button @click="openRecordDetail(item)" class="bg-blue-600/20 text-blue-400 px-3 py-1 rounded-lg hover:bg-blue-600 hover:text-white transition">修正详情</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <table v-else class="w-full text-left text-xs">
+                        <thead class="bg-orange-500/10 text-orange-500 uppercase">
+                            <tr><th class="px-8 py-4">所属院落</th><th class="px-4 py-4">地址</th><th class="px-4 py-4">承租人</th><th class="px-4 py-4">电话</th><th class="px-8 py-4 text-center">操作</th></tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800/50">
+                            <tr v-for="(t, i) in paginatedRecords" :key="i" class="hover:bg-orange-500/5 transition">
+                                <td class="px-8 py-5 font-bold text-slate-200">{{ t.yardName }}</td>
+                                <td class="px-4 py-5 text-slate-400">{{ t.address }}</td>
+                                <td class="px-4 py-5 text-white font-bold">{{ t.name }}</td>
+                                <td class="px-4 py-5 font-mono text-orange-400">{{ t.phone }}</td>
+                                <td class="px-8 py-5 text-center"><button @click="openTenantDetail(t)" class="bg-orange-600/20 text-orange-400 px-4 py-1.5 rounded-lg font-bold">查看档案</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="px-8 py-4 border-t border-slate-800 bg-white/5 flex justify-between items-center">
+                    <span class="text-[11px] text-slate-500">共 {{ filteredRecords.length }} 条记录</span>
+                    <div class="flex gap-4">
+                        <button class="page-btn" :disabled="currentPage === 1" @click="currentPage--">上一页</button>
+                        <button class="page-btn" :disabled="currentPage >= totalPages" @click="currentPage++">下一页</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div v-if="recordModal.show" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="bg-[#0f172a] border border-slate-700 w-full max-w-2xl rounded-[2.5rem] overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-6 border-b border-slate-800 flex justify-between items-center text-white bg-slate-900/50">
+                <div><h3 class="font-bold text-lg">📋 记录订正</h3><p class="text-[10px] text-blue-400 font-mono">ID: {{ recordModal.data.id }}</p></div>
+                <button @click="recordModal.show = false" class="text-slate-500 text-2xl hover:text-white">&times;</button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-8 space-y-6 no-scrollbar">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1"><label class="text-[10px] text-slate-500 font-bold">主载体</label><select v-model="recordModal.data.mainType" class="db-input"><option v-for="t in mainTypes" :key="t" :value="t">{{ t }}</option></select></div>
+                    <div class="space-y-1"><label class="text-[10px] text-slate-500 font-bold">细项</label><select v-model="recordModal.data.subType" class="db-input"><option v-for="s in buildingSubTypes" :key="s" :value="s">{{ s }}</option></select></div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1"><label class="text-[10px] text-slate-500 font-bold">结果</label><select v-model="recordModal.data.result" class="db-input"><option value="合格">合格</option><option value="待整改">待整改</option><option value="已整改">已整改</option></select></div>
+                    <div class="space-y-1"><label class="text-[10px] text-slate-500 font-bold">级别</label><select v-model="recordModal.data.level" class="db-input"><option value="无">无</option><option value="一般">一般</option><option value="严重">严重</option><option value="紧急">紧急</option></select></div>
+                </div>
+                <div class="space-y-1"><label class="text-[10px] text-slate-500 font-bold">地址</label><input v-model="recordModal.data.fullAddress" class="db-input"></div>
+                <div class="space-y-2">
+                    <label class="text-[10px] text-slate-500 font-bold">现场图</label>
+                    <div class="img-grid-container p-4 bg-black/20 rounded-2xl">
+                        <img v-for="(img, idx) in recordModal.data.images" :key="idx" :src="img" class="img-item" @click="window.open(img)">
+                    </div>
+                </div>
+                <div class="space-y-1"><label class="text-[10px] text-slate-500 font-bold">描述</label><textarea v-model="recordModal.data.description" rows="3" class="db-input"></textarea></div>
+            </div>
+            <div class="p-6 border-t border-slate-800 bg-slate-900/50 flex gap-4"><button @click="recordModal.show = false" class="flex-1 py-4 text-slate-400">取消</button><button @click="saveRecord" class="flex-1 py-4 bg-blue-600 rounded-2xl text-white font-bold">确认同步</button></div>
+        </div>
+    </div>
+
+    <div v-if="tenantModal.show" class="modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="bg-[#111827] border border-orange-500/30 w-full max-w-lg rounded-[2.5rem] overflow-hidden">
+            <div class="p-6 border-b border-white/5 bg-orange-500/5 flex justify-between items-center text-white"><h3 class="font-bold text-orange-400">👤 租户订正</h3><button @click="tenantModal.show = false" class="text-slate-500 text-2xl">&times;</button></div>
+            <div class="p-8 space-y-5">
+                <div class="space-y-1"><label class="text-[10px] text-slate-500 font-bold uppercase">姓名</label><input v-model="tenantModal.data.name" class="db-input"></div>
+                <div class="space-y-1"><label class="text-[10px] text-slate-500 font-bold uppercase">地址</label><input v-model="tenantModal.data.address" class="db-input"></div>
+                <div class="space-y-1"><label class="text-[10px] text-slate-500 font-bold uppercase">电话</label><input v-model="tenantModal.data.phone" class="db-input"></div>
+                <div class="flex gap-4 pt-4"><button @click="tenantModal.show = false" class="flex-1 py-3 text-slate-400">取消</button><button @click="saveTenant" class="flex-1 py-3 bg-orange-600 rounded-2xl text-white font-bold">确认更新</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div v-if="logoutConfirm.show" class="modal-overlay fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 w-full max-w-sm rounded-[2rem] p-8 text-center space-y-6 shadow-2xl">
+            <div class="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            </div>
+            <div class="space-y-2">
+                <h3 class="text-xl font-bold text-white">确认退出系统？</h3>
+                <p class="text-xs text-slate-500">退出后需重新登录方可管理数据</p>
+            </div>
+            <div class="flex gap-4 pt-2">
+                <button @click="logoutConfirm.show = false" class="flex-1 py-3 bg-slate-800 text-slate-300 rounded-2xl font-bold hover:bg-slate-700 transition-all">取消</button>
+                <button @click="executeLogout" class="flex-1 py-3 bg-red-600 text-white rounded-2xl font-bold hover:bg-red-500 transition-all">确认退出</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+const { createApp, ref, computed } = Vue;
+
+createApp({
+    setup() {
+        const viewType = ref('record'); 
+        const selectedYard = ref('');
+        const showOnlyUrgent = ref(false);
+        const showOnlyFixed = ref(false); 
+        const filter = ref({ mainType: '全部', subType: '全部' });
+        const currentPage = ref(1);
+        const pageSize = 10;
+        const logoutConfirm = ref({ show: false });
+
+        const mainTypes = ['楼栋', '街巷', '公共场所', '商企', '工地'];
+        const buildingSubTypes = ['燃气', '消防', '租户', '独居', '群租', '楼顶', '电梯', '楼道', '门卫', '其他'];
+        const yards = ['北一街', '北二街', '北新苑', '聚乐苑', '双林南支路', '136号院', '14号院', '44号院', '49号院', '51号院', '8号院', '149号院', '名都楼'];
+
+        const generateDB = () => {
+            const db = [];
+            const demoImgs = ['https://images.unsplash.com/photo-1590247813693-5541d1c609fd?w=400','https://images.unsplash.com/photo-1582553443210-9881fa99f21a?w=400'];
+            for(let i=0; i<40; i++) db.push({ id: 'URG-'+i, syncTime: `2026-02-19 14:${i<10?'0'+i:i}`, workerName: '张安全', workerId: 'XZ-009', yardName: yards[i%13], fullAddress: yards[i%13]+'排查点', mainType: '楼栋', subType: buildingSubTypes[i%10], level: '严重', result: '待整改', images: [demoImgs[0]], description: '隐患待处理。' });
+            for(let i=0; i<20; i++) db.push({ id: 'FIX-'+i, syncTime: `2026-02-18 10:30`, workerName: '李建国', workerId: 'XZ-005', yardName: yards[i%13], fullAddress: yards[i%13]+'整改点', mainType: '楼栋', subType: '消防', level: '无', result: '已整改', images: [demoImgs[1]], description: '整改完成。' });
+            for(let i=0; i<200; i++) db.push({ id: 'OK-'+i, syncTime: `2026-02-19 09:15`, workerName: '王小安', workerId: 'XZ-001', yardName: yards[i%13], fullAddress: yards[i%13]+'常规区', mainType: i%2===0?'街巷':'公共场所', subType: '日常', level: '无', result: '合格', images: [], description: '正常。' });
+            return db;
+        };
+
+        const virtualDB = ref(generateDB());
+        const tenantDB = ref(Array.from({length: 20}, (_, i) => ({ id: 'TID-'+i, yardName: yards[i%13], address: (i+1)+'楼'+(101+i)+'室', name: ['赵国庆','钱爱军'][i%2], phone: `1381234${1000+i}` })));
+
+        const recordModal = ref({ show: false, data: {} });
+        const tenantModal = ref({ show: false, data: {} });
+
+        const filteredRecords = computed(() => {
+            if (viewType.value === 'record') {
+                let list = [...virtualDB.value];
+                if (selectedYard.value) list = list.filter(r => r.yardName === selectedYard.value);
+                if (showOnlyUrgent.value) list = list.filter(r => r.result === '待整改');
+                if (showOnlyFixed.value) list = list.filter(r => r.result === '已整改');
+                if (filter.value.mainType !== '全部') list = list.filter(r => r.mainType === filter.value.mainType);
+                if (filter.value.mainType === '楼栋' && filter.value.subType !== '全部') list = list.filter(r => r.subType === filter.value.subType);
+                return list.sort((a,b) => b.syncTime.localeCompare(a.syncTime));
+            }
+            return tenantDB.value.filter(t => !selectedYard.value || t.yardName === selectedYard.value);
+        });
+
+        return {
+            viewType, virtualDB, tenantDB, filteredRecords, logoutConfirm, recordModal, tenantModal,
+            paginatedRecords: computed(() => filteredRecords.value.slice((currentPage.value-1)*pageSize, currentPage.value*pageSize)),
+            mainTypes, buildingSubTypes, yards, selectedYard, showOnlyUrgent, showOnlyFixed, filter, currentPage,
+            totalPages: computed(() => Math.ceil(filteredRecords.value.length / pageSize)),
+            totalUrgentCount: computed(() => virtualDB.value.filter(r => r.result === '待整改').length),
+            totalFixedCount: computed(() => virtualDB.value.filter(r => r.result === '已整改').length),
+            sortedCourtyardList: computed(() => yards.map(y => ({
+                name: y, done: virtualDB.value.filter(r => r.yardName === y).length, urgent: virtualDB.value.filter(r => r.yardName === y && r.result === '待整改').length
+            }))),
+            setGlobalView: () => { viewType.value = 'record'; selectedYard.value = ''; showOnlyUrgent.value = false; showOnlyFixed.value = false; filter.value.mainType = '全部'; filter.value.subType = '全部'; currentPage.value = 1; },
+            selectYard: (n) => { viewType.value = 'record'; selectedYard.value = n; showOnlyUrgent.value = false; showOnlyFixed.value = false; currentPage.value = 1; },
+            showYardUrgent: (n) => { viewType.value = 'record'; selectedYard.value = n; showOnlyUrgent.value = true; showOnlyFixed.value = false; currentPage.value = 1; },
+            showGlobalUrgent: () => { viewType.value = 'record'; selectedYard.value = ''; showOnlyUrgent.value = true; showOnlyFixed.value = false; currentPage.value = 1; },
+            showGlobalFixed: () => { viewType.value = 'record'; selectedYard.value = ''; showOnlyUrgent.value = false; showOnlyFixed.value = true; currentPage.value = 1; },
+            handleMainTypeChange: () => { filter.value.subType = '全部'; currentPage.value = 1; },
+            openRecordDetail: (i) => { recordModal.value = { show: true, data: JSON.parse(JSON.stringify(i)) }; },
+            saveRecord: () => { 
+                const idx = virtualDB.value.findIndex(r => r.id === recordModal.value.data.id);
+                if(idx !== -1) virtualDB.value[idx] = { ...recordModal.value.data };
+                recordModal.value.show = false; 
+            },
+            openTenantDetail: (t) => { tenantModal.value = { show: true, data: { ...t } }; },
+            saveTenant: () => {
+                const idx = tenantDB.value.findIndex(t => t.id === tenantModal.value.data.id);
+                if(idx !== -1) tenantDB.value[idx] = { ...tenantModal.value.data };
+                tenantModal.value.show = false;
+            },
+            executeLogout: () => { window.location.href = 'login.html'; }
+        };
+    }
+}).mount('#app');
+</script>
+</body>
+</html>

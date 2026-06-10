@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.inspect.InsCourtyardMapper">
+
+    <resultMap type="InsCourtyard" id="InsCourtyardResult">
+        <id     property="courtyardId"   column="courtyard_id"/>
+        <result property="courtyardName" column="courtyard_name"/>
+        <result property="sortOrder"     column="sort_order"/>
+        <result property="status"        column="status"/>
+        <result property="createBy"      column="create_by"/>
+        <result property="createTime"    column="create_time"/>
+        <result property="updateBy"      column="update_by"/>
+        <result property="updateTime"    column="update_time"/>
+        <result property="remark"        column="remark"/>
+    </resultMap>
+
+    <sql id="selectCourtyardVo">
+        select courtyard_id, courtyard_name, sort_order, status,
+               create_by, create_time, update_by, update_time, remark
+        from ins_courtyard
+    </sql>
+
+    <select id="selectCourtyardList" parameterType="InsCourtyard" resultMap="InsCourtyardResult">
+        <include refid="selectCourtyardVo"/>
+        <where>
+            <if test="courtyardName != null and courtyardName != ''">and courtyard_name like concat('%', #{courtyardName}, '%')</if>
+            <if test="status != null and status != ''">and status = #{status}</if>
+        </where>
+        order by sort_order
+    </select>
+
+    <select id="selectCourtyardAll" resultMap="InsCourtyardResult">
+        <include refid="selectCourtyardVo"/> where status = '0' order by sort_order
+    </select>
+
+    <select id="selectCourtyardById" parameterType="Long" resultMap="InsCourtyardResult">
+        <include refid="selectCourtyardVo"/> where courtyard_id = #{courtyardId}
+    </select>
+
+    <insert id="insertCourtyard" parameterType="InsCourtyard" useGeneratedKeys="true" keyProperty="courtyardId">
+        insert into ins_courtyard(courtyard_name, sort_order, status, create_by, create_time, remark)
+        values(#{courtyardName}, #{sortOrder}, '0', #{createBy}, sysdate(), #{remark})
+    </insert>
+
+    <update id="updateCourtyard" parameterType="InsCourtyard">
+        update ins_courtyard
+        <set>
+            <if test="courtyardName != null">courtyard_name = #{courtyardName},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="status != null">status = #{status},</if>
+            update_by = #{updateBy}, update_time = sysdate()
+        </set>
+        where courtyard_id = #{courtyardId}
+    </update>
+
+    <delete id="deleteCourtyardById" parameterType="Long">
+        delete from ins_courtyard where courtyard_id = #{courtyardId}
+    </delete>
+
+</mapper>

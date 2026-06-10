@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.inspect.InsLogMapper">
+
+    <resultMap type="InsLog" id="InsLogResult">
+        <id     property="logId"          column="log_id"/>
+        <result property="logCode"        column="log_code"/>
+        <result property="courtyardId"    column="courtyard_id"/>
+        <result property="courtyardName"  column="courtyard_name"/>
+        <result property="addressId"      column="address_id"/>
+        <result property="addressName"    column="address_name"/>
+        <result property="mainType"       column="main_type"/>
+        <result property="subType"        column="sub_type"/>
+        <result property="inspectResult"  column="inspect_result"/>
+        <result property="hazardLevel"    column="hazard_level"/>
+        <result property="description"    column="description"/>
+        <result property="tenantName"     column="tenant_name"/>
+        <result property="tenantPhone"    column="tenant_phone"/>
+        <result property="inspectTime"    column="inspect_time"/>
+        <result property="createBy"       column="create_by"/>
+        <result property="createTime"     column="create_time"/>
+        <result property="updateBy"       column="update_by"/>
+        <result property="updateTime"     column="update_time"/>
+        <result property="remark"         column="remark"/>
+        <collection property="photos" javaType="java.util.List" resultMap="PhotoResult"/>
+    </resultMap>
+
+    <resultMap id="PhotoResult" type="InsLogPhoto">
+        <id     property="photoId"   column="photo_id"/>
+        <result property="logId"     column="log_id"/>
+        <result property="photoUrl"  column="photo_url"/>
+        <result property="sortOrder" column="sort_order"/>
+    </resultMap>
+
+    <sql id="selectLogVo">
+        select l.log_id, l.log_code, l.courtyard_id, c.courtyard_name,
+               l.address_id, l.address_name, l.main_type, l.sub_type,
+               l.inspect_result, l.hazard_level, l.description,
+               l.tenant_name, l.tenant_phone, l.inspect_time,
+               l.create_by, l.create_time, l.update_by, l.update_time, l.remark
+        from ins_log l
+        left join ins_courtyard c on l.courtyard_id = c.courtyard_id
+    </sql>
+
+    <select id="selectLogList" parameterType="InsLog" resultMap="InsLogResult">
+        <include refid="selectLogVo"/>
+        <where>
+            <if test="courtyardId != null">and l.courtyard_id = #{courtyardId}</if>
+            <if test="mainType != null and mainType != ''">and l.main_type = #{mainType}</if>
+            <if test="subType != null and subType != ''">and l.sub_type = #{subType}</if>
+            <if test="inspectResult != null and inspectResult != ''">and l.inspect_result = #{inspectResult}</if>
+            <if test="hazardLevel != null and hazardLevel != ''">and l.hazard_level = #{hazardLevel}</if>
+            <if test="createBy != null and createBy != ''">and l.create_by = #{createBy}</if>
+            <if test="beginTime != null">and l.inspect_time &gt;= #{beginTime}</if>
+            <if test="endTime != null">and l.inspect_time &lt;= #{endTime}</if>
+        </where>
+        order by l.inspect_time desc
+    </select>
+
+    <select id="selectLogById" parameterType="Long" resultMap="InsLogResult">
+        <include refid="selectLogVo"/>
+        where l.log_id = #{logId}
+    </select>
+
+    <select id="selectLogStatistics" parameterType="InsLog" resultType="InsLog">
+        select l.courtyard_id, c.courtyard_name as courtyard_name,
+               count(*) as total_count,
+               sum(case when l.inspect_result = 'hazard' then 1 else 0 end) as hazard_count,
+               sum(case when l.inspect_result = 'rectified' then 1 else 0 end) as rectified_count
+        from ins_log l
+        left join ins_courtyard c on l.courtyard_id = c.courtyard_id
+        <where>
+            <if test="beginTime != null">and l.inspect_time &gt;= #{beginTime}</if>
+            <if test="endTime != null">and l.inspect_time &lt;= #{endTime}</if>
+        </where>
+        group by l.courtyard_id, c.courtyard_name
+    </select>
+
+    <select id="selectTenantList" parameterType="InsLog" resultMap="InsLogResult">
+        <include refid="selectLogVo"/>
+        where l.tenant_name is not null and l.tenant_name != ''
+        <if test="courtyardId != null">and l.courtyard_id = #{courtyardId}</if>
+        order by l.inspect_time desc
+    </select>
+
+    <insert id="insertLog" parameterType="InsLog" useGeneratedKeys="true" keyProperty="logId">
+        insert into ins_log(log_code, courtyard_id, address_id, address_name,
+                            main_type, sub_type, inspect_result, hazard_level,
+                            description, tenant_name, tenant_phone, inspect_time,
+                            create_by, create_time, remark)
+        values(#{logCode}, #{courtyardId}, #{addressId}, #{addressName},
+               #{mainType}, #{subType}, #{inspectResult}, #{hazardLevel},
+               #{description}, #{tenantName}, #{tenantPhone}, #{inspectTime},
+               #{createBy}, sysdate(), #{remark})
+    </insert>
+
+    <update id="updateLog" parameterType="InsLog">
+        update ins_log
+        <set>
+            <if test="addressName != null">address_name = #{addressName},</if>
+            <if test="mainType != null">main_type = #{mainType},</if>
+            <if test="subType != null">sub_type = #{subType},</if>
+            <if test="inspectResult != null">inspect_result = #{inspectResult},</if>
+            <if test="hazardLevel != null">hazard_level = #{hazardLevel},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="tenantName != null">tenant_name = #{tenantName},</if>
+            <if test="tenantPhone != null">tenant_phone = #{tenantPhone},</if>
+            update_by = #{updateBy}, update_time = sysdate()
+        </set>
+        where log_id = #{logId}
+    </update>
+
+    <delete id="deleteLogById" parameterType="Long">
+        delete from ins_log where log_id = #{logId}
+    </delete>
+
+</mapper>

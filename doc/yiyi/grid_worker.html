@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>巡检终端 - 完整时间显示版</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .glass-blur { backdrop-filter: blur(8px); background: rgba(255, 255, 255, 0.9); }
+        .tenant-input { border-bottom: 1px dashed #3b82f6; background: transparent; outline: none; width: 100%; font-weight: bold; color: #1e40af; }
+        .img-upload-box { border: 2px dashed #e2e8f0; aspect-ratio: 1/1; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; cursor: pointer; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+<div id="app" class="max-w-md mx-auto bg-white min-h-screen shadow-xl flex flex-col relative overflow-x-hidden">
+    
+    <header class="p-3 border-b bg-white sticky top-0 z-30 flex justify-between items-center shadow-sm glass-blur">
+        <div class="flex items-center">
+            <button v-if="viewMode === 'form' && !isEditing" @click="handleLogout" class="flex flex-col items-center text-red-500 active:scale-90 transition">
+                <div class="p-1.5 bg-red-50 rounded-full">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                </div>
+                <span class="text-[9px] font-bold mt-0.5">登出</span>
+            </button>
+            <button v-if="isEditing" @click="resetForm" class="p-1 text-blue-600 hover:bg-blue-50 rounded-lg transition">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+            </button>
+            <button v-if="viewMode === 'history'" @click="viewMode = 'form'" class="p-1 text-gray-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg></button>
+        </div>
+        <div class="text-center">
+            <h1 v-if="viewMode === 'form'" class="font-bold text-base text-blue-600">{{ isEditing ? '修改记录' : '现场录入' }}</h1>
+            <h1 v-else-if="viewMode === 'history'" class="font-bold text-base text-gray-800">巡查档案</h1>
+            <h1 v-else class="font-bold text-base text-green-600">提交结果</h1>
+            <p v-if="viewMode === 'form'" class="text-[8px] text-gray-400 font-mono">{{ generatedId }}</p>
+        </div>
+        <button v-if="viewMode === 'form' && !isEditing" @click="viewMode = 'history'" class="flex flex-col items-center text-blue-600 active:scale-95 transition">
+            <div class="p-1.5 bg-blue-50 rounded-full shadow-sm"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg></div>
+            <span class="text-[9px] font-bold mt-0.5">档案</span>
+        </button>
+        <div v-else class="w-10"></div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto no-scrollbar" id="main-content">
+        <div v-if="viewMode === 'form'" class="p-4 space-y-5 animate__animated animate__fadeIn">
+            <section class="space-y-4">
+                <div class="grid grid-cols-3 gap-2">
+                    <button v-for="t in ['楼栋', '街巷', '公共场所', '商企', '工地']" @click="handleMainTypeChange(t)"
+                        :class="['py-2 rounded-xl border text-xs font-bold transition', form.mainType === t ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-gray-600']">
+                        {{ t }}
+                    </button>
+                </div>
+                <div v-if="form.mainType === '楼栋'" class="grid grid-cols-4 gap-2 animate__animated animate__fadeInUp">
+                    <button v-for="s in ['燃气', '消防', '租户', '独居', '门卫', '其他']" @click="form.subType = s"
+                        :class="['py-1.5 rounded-lg border text-[10px] font-bold transition', form.subType === s ? 'bg-indigo-500 text-white' : 'bg-white text-gray-600']">
+                        {{ s }}
+                    </button>
+                </div>
+            </section>
+
+            <section class="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 space-y-4">
+                <div class="relative">
+                    <label class="block text-xs font-bold text-blue-600 mb-1">巡查地址</label>
+                    <input v-model="form.address" @input="handleSearch" type="text" placeholder="匹配地址库..." class="w-full px-4 py-3 rounded-xl border-white bg-white text-sm outline-none shadow-sm">
+                    <div v-if="suggestions.length > 0" class="absolute z-40 w-full mt-1 bg-white border rounded-xl shadow-2xl overflow-hidden">
+                        <div v-for="item in suggestions" @click="selectAddress(item)" class="px-4 py-3 text-sm hover:bg-blue-50 border-b flex justify-between">
+                            <span>{{ item.address }}</span><span class="text-[10px] text-blue-500">{{ item.name }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div v-if="form.subType === '租户' && matchedTenant" class="bg-white p-4 rounded-xl border-l-4 border-orange-500 shadow-sm animate__animated animate__shakeX">
+                    <h4 class="text-xs font-bold text-gray-400 mb-2">租户备案 (现场修正)</h4>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><p class="text-[10px] text-gray-400">承租人</p><input v-model="matchedTenant.name" type="text" class="tenant-input text-sm"></div>
+                        <div><p class="text-[10px] text-gray-400">联系电话</p><input v-model="matchedTenant.phone" type="text" class="tenant-input text-sm font-mono"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="space-y-2">
+                <label class="block text-xs font-bold text-gray-400">现场影像资料 ({{ form.images.length }}/9)</label>
+                <div class="grid grid-cols-3 gap-3">
+                    <div v-for="(img, idx) in form.images" :key="idx" class="relative aspect-square">
+                        <img :src="img" class="w-full h-full object-cover rounded-xl border shadow-sm">
+                        <button @click="removeImage(idx)" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs">×</button>
+                    </div>
+                    <div v-if="form.images.length < 9" @click="$refs.fileInput.click()" class="img-upload-box bg-white">
+                        <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke-width="2"/><circle cx="12" cy="13" r="3" stroke-width="2"/></svg>
+                        <span class="text-[10px] text-gray-400 mt-1 font-bold">拍照/上传</span>
+                    </div>
+                </div>
+                <input type="file" ref="fileInput" class="hidden" accept="image/*" multiple @change="handleFileUpload">
+            </section>
+
+            <section class="space-y-4 pt-2 border-t">
+                <textarea v-model="form.content" rows="3" class="w-full p-4 bg-gray-50 border rounded-2xl text-sm" placeholder="详述现场情况描述..."></textarea>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 mb-1 ml-1">巡查结果</label>
+                        <select v-model="form.result" @change="handleResultChange" class="w-full p-3 border rounded-xl text-sm font-bold bg-white">
+                            <option value="合格">合格</option>
+                            <option value="存在隐患">存在隐患</option>
+                            <option value="已整改">已整改</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-500 mb-1 ml-1">隐患级别</label>
+                        <select v-model="form.level" :disabled="form.result === '合格'" class="w-full p-3 border rounded-xl text-sm bg-white" :class="{'opacity-50': form.result === '合格'}">
+                            <template v-if="form.result === '存在隐患'">
+                                <option value="一般">一般</option>
+                                <option value="较大">较大</option>
+                                <option value="重大">重大</option>
+                            </template>
+                            <template v-else>
+                                <option value="无">无</option>
+                            </template>
+                        </select>
+                    </div>
+                </div>
+            </section>
+            <button @click="submitForm" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg active:scale-95 transition">
+                {{ isEditing ? '保存修改' : '立即提交巡查记录' }}
+            </button>
+        </div>
+
+        <div v-if="viewMode === 'success'" class="p-6 flex flex-col items-center animate__animated animate__zoomIn">
+            <div class="mt-10 mb-8 text-center"><div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 font-bold text-2xl">✓</div><h2 class="text-xl font-black text-gray-800">上传成功</h2></div>
+            <div class="w-full bg-gray-50 rounded-3xl p-5 space-y-3">
+                <div class="flex justify-between border-b pb-2 text-xs"><span class="text-gray-400">单据流水号</span><span class="font-mono font-bold">{{ lastData.id }}</span></div>
+                <div class="flex justify-between border-b pb-2 text-xs"><span class="text-gray-400">提交时间</span><span class="text-gray-600 font-bold font-mono">{{ lastData.time }}</span></div>
+                <div class="flex gap-2 overflow-x-auto py-1">
+                    <img v-for="img in lastData.images" :src="img" class="w-12 h-12 rounded-lg border object-cover flex-shrink-0">
+                </div>
+            </div>
+            <div class="mt-10 w-full space-y-3">
+                <button @click="resetForm" class="w-full bg-blue-600 text-white py-3.5 rounded-2xl font-bold">录入下一条</button>
+                <button @click="viewMode = 'history'" class="w-full bg-white text-gray-500 py-3 rounded-2xl border font-bold text-sm">查看档案</button>
+            </div>
+        </div>
+
+        <div v-if="viewMode === 'history'" class="animate__animated animate__fadeInRight flex flex-col min-h-full">
+            <div v-if="historyRecords.length === 0" class="p-20 text-center text-gray-300">暂无档案记录</div>
+            <div v-else class="divide-y flex-1">
+                <div v-for="r in pagedRecords" :key="r.id" class="p-3 bg-white border-l-4 active:bg-gray-50 transition-colors" :style="{borderColor: r.result === '合格' ? '#10b981' : '#ef4444'}">
+                    <div class="flex justify-between items-center gap-3">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1.5">
+                                <span :class="['text-[8px] px-1.5 py-0.5 rounded font-black text-white flex-shrink-0', r.result === '合格' ? 'bg-green-500' : 'bg-red-500']">{{ r.result }}</span>
+                                <span class="text-xs font-black text-gray-800 truncate">{{ r.mainType }} · {{ r.subType }}</span>
+                            </div>
+                            
+                            <div class="flex items-center justify-between gap-2">
+                                <p class="text-[10px] text-gray-500 truncate font-medium flex-1">{{ r.address }}</p>
+                                <p class="text-[9px] text-blue-500 font-bold bg-blue-50 px-1.5 py-0.5 rounded flex-shrink-0 font-mono">
+                                    {{ r.time }}
+                                </p>
+                            </div>
+
+                            <div v-if="r.images.length > 0" class="flex gap-1 mt-2">
+                                <img v-for="img in r.images.slice(0,5)" :src="img" class="w-8 h-8 rounded border object-cover">
+                                <div v-if="r.images.length > 5" class="w-8 h-8 rounded border bg-gray-100 flex items-center justify-center text-[8px] text-gray-400">+{{ r.images.length - 5 }}</div>
+                            </div>
+                        </div>
+                        
+                        <button @click="editRecord(r)" class="flex flex-col items-center justify-center p-2 text-orange-600 font-bold bg-orange-50 rounded-xl border border-orange-100 active:scale-90 transition flex-shrink-0">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-width="2"/></svg>
+                            <span class="text-[9px] mt-0.5">编辑</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="historyRecords.length > 0" class="p-3 bg-white border-t sticky bottom-0 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+                <div class="flex items-center justify-between max-w-[180px] mx-auto">
+                    <button @click="prevPage" :disabled="currentPage === 1" class="p-1.5 rounded-full border bg-white disabled:opacity-30">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    </button>
+                    <span class="text-[11px] font-bold text-gray-500 font-mono">{{ currentPage }} / {{ historyRecords.length }}</span>
+                    <button @click="nextPage" :disabled="currentPage >= historyRecords.length" class="p-1.5 rounded-full border bg-white disabled:opacity-30">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div v-if="showLogoutConfirm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 animate__animated animate__fadeIn">
+        <div class="bg-white w-full rounded-3xl p-6 text-center space-y-4">
+            <h3 class="font-black text-lg">确认登出系统？</h3>
+            <div class="flex gap-3">
+                <button @click="showLogoutConfirm = false" class="flex-1 py-3 bg-gray-100 rounded-xl font-bold text-gray-500 text-sm">取消</button>
+                <button @click="confirmLogout" class="flex-1 py-3 bg-red-600 rounded-xl font-bold text-white text-sm">确认</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const { createApp, ref, computed } = Vue;
+
+createApp({
+    setup() {
+        const viewMode = ref('form'); 
+        const isEditing = ref(false);
+        const dailyCount = ref(1);
+        const historyRecords = ref([]); 
+        const lastData = ref({});
+        const suggestions = ref([]);
+        const matchedTenant = ref(null);
+        const showLogoutConfirm = ref(false);
+
+        // 分页逻辑
+        const currentPage = ref(1);
+        const pageSize = 10;
+        const pagedRecords = computed(() => {
+            const start = (currentPage.value - 1) * pageSize;
+            return historyRecords.value.slice(start, start + pageSize);
+        });
+
+        const nextPage = () => { if (currentPage.value < Math.ceil(historyRecords.value.length/pageSize)) currentPage.value++; };
+        const prevPage = () => { if (currentPage.value > 1) currentPage.value--; };
+
+        const tenantDB = ref([
+            { address: '北新苑5号楼302', name: '王爱华', phone: '13812340021' },
+            { address: '东街28号1栋', name: '张大勇', phone: '15577888877' }
+        ]);
+
+        const form = ref({ id: '', mainType: '楼栋', subType: '燃气', address: '', content: '', level: '无', result: '合格', images: [] });
+
+        const generatedId = computed(() => {
+            if (isEditing.value) return form.value.id;
+            const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            return `XJ-${date}-${String(dailyCount.value).padStart(3, '0')}`;
+        });
+
+        const handleResultChange = () => {
+            if (form.value.result === '合格' || form.value.result === '已整改') {
+                form.value.level = '无';
+            } else if (form.value.result === '存在隐患' && form.value.level === '无') {
+                form.value.level = '一般';
+            }
+        };
+
+        const handleMainTypeChange = (t) => {
+            form.value.mainType = t;
+            form.value.subType = t === '楼栋' ? '燃气' : '';
+        };
+
+        const handleFileUpload = (e) => {
+            const files = Array.from(e.target.files);
+            files.forEach(file => {
+                if (form.value.images.length >= 9) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => form.value.images.push(ev.target.result);
+                reader.readAsDataURL(file);
+            });
+        };
+
+        const removeImage = (idx) => form.value.images.splice(idx, 1);
+        const handleSearch = () => {
+            matchedTenant.value = null;
+            suggestions.value = form.value.address.length > 0 ? tenantDB.value.filter(i => i.address.includes(form.value.address)) : [];
+        };
+        const selectAddress = (item) => {
+            form.value.address = item.address;
+            suggestions.value = [];
+            if (form.value.subType === '租户') matchedTenant.value = { ...item };
+        };
+
+        // 核心修改逻辑：生成完整的时间字符串
+        const submitForm = () => {
+            const now = new Date();
+            
+            // 格式化为：YYYY-MM-DD HH:mm:ss
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            const d = String(now.getDate()).padStart(2, '0');
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            const ss = String(now.getSeconds()).padStart(2, '0');
+            const timeStr = `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+
+            const dataToSave = { 
+                ...form.value, 
+                id: generatedId.value, 
+                time: timeStr, 
+                timestamp: now.getTime() 
+            };
+
+            if (isEditing.value) {
+                const idx = historyRecords.value.findIndex(r => r.id === form.value.id);
+                if (idx !== -1) historyRecords.value[idx] = dataToSave;
+                isEditing.value = false;
+                viewMode.value = 'history';
+            } else {
+                historyRecords.value.unshift(dataToSave);
+                lastData.value = dataToSave;
+                viewMode.value = 'success';
+            }
+            currentPage.value = 1;
+        };
+
+        const editRecord = (r) => {
+            form.value = JSON.parse(JSON.stringify(r));
+            isEditing.value = true;
+            viewMode.value = 'form';
+        };
+
+        const resetForm = () => {
+            if (!isEditing.value) dailyCount.value++;
+            form.value = { id: '', mainType: '楼栋', subType: '燃气', address: '', content: '', level: '无', result: '合格', images: [] };
+            matchedTenant.value = null;
+            isEditing.value = false;
+            viewMode.value = 'form';
+        };
+
+        const handleLogout = () => { showLogoutConfirm.value = true; };
+        const confirmLogout = () => { showLogoutConfirm.value = false; resetForm(); };
+
+        return { 
+            viewMode, form, generatedId, suggestions, matchedTenant, historyRecords, lastData, isEditing, showLogoutConfirm,
+            currentPage, pagedRecords, prevPage, nextPage,
+            handleMainTypeChange, handleFileUpload, removeImage, handleSearch, selectAddress, submitForm, editRecord, resetForm, handleLogout, confirmLogout 
+        };
+    }
+}).mount('#app');
+</script>
+</body>
+</html>

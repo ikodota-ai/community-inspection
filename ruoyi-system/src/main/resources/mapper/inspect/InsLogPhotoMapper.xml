@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.inspect.InsLogPhotoMapper">
+
+    <resultMap type="InsLogPhoto" id="PhotoResult">
+        <id     property="photoId"   column="photo_id"/>
+        <result property="logId"     column="log_id"/>
+        <result property="photoUrl"  column="photo_url"/>
+        <result property="sortOrder" column="sort_order"/>
+    </resultMap>
+
+    <select id="selectPhotosByLogId" parameterType="Long" resultMap="PhotoResult">
+        select photo_id, log_id, photo_url, sort_order
+        from ins_log_photo where log_id = #{logId} order by sort_order
+    </select>
+
+    <insert id="insertPhoto" parameterType="InsLogPhoto">
+        insert into ins_log_photo(log_id, photo_url, sort_order)
+        values(#{logId}, #{photoUrl}, #{sortOrder})
+    </insert>
+
+    <insert id="insertPhotos" parameterType="java.util.List">
+        insert into ins_log_photo(log_id, photo_url, sort_order) values
+        <foreach collection="list" item="photo" separator=",">
+            (#{photo.logId}, #{photo.photoUrl}, #{photo.sortOrder})
+        </foreach>
+    </insert>
+
+    <delete id="deleteByLogId" parameterType="Long">
+        delete from ins_log_photo where log_id = #{logId}
+    </delete>
+
+</mapper>
