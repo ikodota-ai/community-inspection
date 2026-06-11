@@ -273,11 +273,19 @@ createApp({
                 viewMode.value = 'history';
             } catch(e) { alert('加载失败: '+e.message); }
         };
-        const editRecord = (r) => {
-            form.value = { logId: r.logId, mainType: r.mainType, subType: r.subType, addressName: r.addressName,
-                addressId: r.addressId, description: r.description||'', inspectResult: r.inspectResult,
-                hazardLevel: r.hazardLevel||'', tenantName: r.tenantName||'', tenantPhone: r.tenantPhone||'',
-                photos: (r.photos||[]).map(p=>({ photoUrl: p.photoUrl, sortOrder: p.sortOrder })), inspectTime: '' };
+        const editRecord = async (r) => {
+            // 加载完整详情（含照片）
+            const detail = await apiJson(API+'/h5/log/'+r.logId, { headers: authHeaders() });
+            const d = detail.data || detail;
+            form.value = { logId: d.logId, mainType: d.mainType, subType: d.subType, addressName: d.addressName,
+                addressId: d.addressId, description: d.description||'', inspectResult: d.inspectResult,
+                hazardLevel: d.hazardLevel||'', tenantName: d.tenantName||'', tenantPhone: d.tenantPhone||'',
+                photos: (d.photos||[]).map(p=>{
+                    let url = p.photoUrl || '';
+                    // 统一转为相对路径走nginx代理
+                    url = url.replace(/^https?:\/\/[^\/]+/, '');
+                    return { photoUrl: url, sortOrder: p.sortOrder };
+                }), inspectTime: '' };
             isEditing.value = true; viewMode.value = 'form';
         };
         const resetForm = () => {
