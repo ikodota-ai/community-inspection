@@ -19,14 +19,18 @@
         <el-col :span="4">
           <el-card shadow="never">
             <div slot="header" class="clearfix" style="display:flex;justify-content:space-between;align-items:center">
-              <b>院落导航</b>
+              <b>网格导航</b>
               <el-button type="success" size="mini" icon="el-icon-full-screen" @click="fullscreen=true" style="padding:4px 8px">大屏</el-button>
             </div>
-            <div v-for="c in courtyards" :key="c.courtyardId" @click="selectCourtyard(c)" :class="['yard-item',{active:queryParams.courtyardId===c.courtyardId}]">
-              <span class="name">{{ c.courtyardName }}</span>
-              <span v-if="c.hazardCount" class="badge">{{ c.hazardCount }}</span>
-            </div>
             <div @click="selectAll" :class="['yard-item',{active:!queryParams.courtyardId}]">🌐 全辖区</div>
+            <div v-for="grid in gridList" :key="grid.id" class="grid-group">
+              <div @click="selectGrid(grid)" :class="['grid-header',{active:queryParams.gridId===grid.id}]">
+                {{ grid.name }}
+              </div>
+              <div v-for="c in grid.children" :key="c.courtyardId" @click="selectCourtyard(c)" :class="['yard-item sub',{active:queryParams.courtyardId===c.courtyardId}]">
+                <span class="name">{{ c.courtyardName }}</span>
+              </div>
+            </div>
           </el-card>
         </el-col>
         <el-col :span="20">
@@ -226,7 +230,7 @@ export default {
       logList: [], courtyards: [], detail: null, tenantList: [],
       detailVisible: false, editVisible: false, dateRange: [],
       fsView: 'record', tenantCourtyard: '',
-      queryParams: { pageNum: 1, pageSize: 10, courtyardId: null, mainType: '', subType: '', inspectResult: '' },
+      queryParams: { pageNum: 1, pageSize: 10, courtyardId: null, gridId: null, mainType: '', subType: '', inspectResult: '' },
       editForm: {},
       // 字典数据（从数据库加载）
       dictData: { placeType: [], inspectItem: [], inspectResult: [], hazardLevel: [] },
@@ -243,7 +247,16 @@ export default {
       if (this.queryParams.inspectResult) return this.labelMap.inspectResult[this.queryParams.inspectResult];
       return c ? c.courtyardName : '';
     },
-    tenantCourtyards() { return [...new Set(this.tenantList.map(t=>t.courtyardName).filter(Boolean))]; }
+    tenantCourtyards() { return [...new Set(this.tenantList.map(t=>t.courtyardName).filter(Boolean))]; },
+    gridList() {
+      const map = {};
+      this.courtyards.forEach(c => {
+        const gid = c.gridDeptId || 0;
+        if (!map[gid]) map[gid] = { id: gid, name: c.gridName || '未分组', children: [] };
+        map[gid].children.push(c);
+      });
+      return Object.values(map).sort((a,b) => a.id - b.id);
+    }
   },
   watch: { fsView(v) { if(v==='tenant') this.loadTenants(); else this.handleQuery(); } },
   created() { this.loadDicts(); this.loadCourtyards(); this.handleQuery(); },
@@ -274,14 +287,24 @@ export default {
     handleQuery() {
       this.loading = true; this.fsView = 'record';
       const params = { ...this.queryParams };
+      // 网格ID转换为courtyardId列表（后端暂不直接支持gridId，前端转换）
+      if (params.gridId) {
+        const cids = this.courtyards.filter(c => c.gridDeptId === params.gridId).map(c => c.courtyardId);
+        params.courtyardIds = cids.join(',');
+        delete params.gridId;
+      } else {
+        delete params.gridId;
+        delete params.courtyardIds;
+      }
       if (this.dateRange && this.dateRange.length===2) { params.beginTime = this.dateRange[0]+' 00:00:00'; params.endTime = this.dateRange[1]+' 23:59:59'; }
       listLog(params).then(res => { this.logList = res.rows; this.total = res.total; this.loading = false; });
       this.loadTenants();
     },
     loadTenants() { listTenant({pageNum:1,pageSize:999}).then(res => { this.tenantList = res.rows||[]; this.tenantTotal = res.total||0; }); },
     onDateChange() { this.handleQuery(); },
-    selectAll() { this.queryParams.courtyardId=null; this.queryParams.inspectResult=''; this.queryParams.pageNum=1; this.handleQuery(); },
-    selectCourtyard(c) { this.queryParams.courtyardId=c.courtyardId; this.queryParams.inspectResult=''; this.queryParams.pageNum=1; this.handleQuery(); },
+    selectAll() { this.queryParams.courtyardId=null; this.queryParams.gridId=null; this.queryParams.inspectResult=''; this.queryParams.pageNum=1; this.handleQuery(); },
+    selectGrid(g) { this.queryParams.gridId=g.id; this.queryParams.courtyardId=null; this.queryParams.inspectResult=''; this.queryParams.pageNum=1; this.handleQuery(); },
+    selectCourtyard(c) { this.queryParams.courtyardId=c.courtyardId; this.queryParams.gridId=null; this.queryParams.inspectResult=''; this.queryParams.pageNum=1; this.handleQuery(); },
     setGlobalView() { this.selectAll(); },
     showYardUrgent(c) { this.queryParams.courtyardId=c.courtyardId; this.queryParams.inspectResult='hazard'; this.queryParams.pageNum=1; this.handleQuery(); },
     showAllHazard() { this.queryParams.courtyardId=null; this.queryParams.inspectResult='hazard'; this.queryParams.pageNum=1; this.handleQuery(); },
@@ -303,7 +326,11 @@ export default {
 .stat-card .label { font-size:12px; color:#909399; margin-top:4px; }
 .stat-card.tenant { border-left:4px solid #e6a23c; }
 .stat-card.tenant:hover { border-color:#e6a23c; background:#fef0d2; }
+.grid-group { margin-bottom:4px; }
+.grid-header { padding:6px 12px; cursor:pointer; font-weight:bold; font-size:13px; color:#303133; border-left:3px solid transparent; }
+.grid-header:hover, .grid-header.active { color:#409EFF; background:#f0f9ff; }
 .yard-item { padding:8px 12px; cursor:pointer; border-left:3px solid transparent; margin:2px 0; font-size:13px; }
+.yard-item.sub { padding-left:24px; font-size:12px; }
 .yard-item:hover, .yard-item.active { border-left-color:#409EFF; color:#409EFF; background:#f0f9ff; }
 .yard-item .name { font-weight:bold; }
 .badge { background:#f56c6c; color:#fff; border-radius:10px; padding:1px 6px; font-size:10px; margin-left:4px; }

@@ -46,6 +46,7 @@
         <include refid="selectLogVo"/>
         <where>
             <if test="courtyardId != null">and l.courtyard_id = #{courtyardId}</if>
+            <if test="courtyardIds != null and courtyardIds != ''">and l.courtyard_id in (${courtyardIds})</if>
             <if test="mainType != null and mainType != ''">and l.main_type = #{mainType}</if>
             <if test="subType != null and subType != ''">and l.sub_type = #{subType}</if>
             <if test="inspectResult != null and inspectResult != ''">and l.inspect_result = #{inspectResult}</if>

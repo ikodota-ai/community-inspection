@@ -34,6 +34,9 @@ public class InsLog extends BaseEntity
     /** 巡查照片 */
     private List<InsLogPhoto> photos;
 
+    /** 批量院落筛选（逗号分隔ID，非持久化） */
+    private String courtyardIds;
+
     /** 统计用：院落汇总数据（非持久化字段） */
     private Integer totalCount;
     private Integer hazardCount;
@@ -102,4 +105,7 @@ public class InsLog extends BaseEntity
 
     public Integer getRectifiedCount() { return rectifiedCount; }
     public void setRectifiedCount(Integer rectifiedCount) { this.rectifiedCount = rectifiedCount; }
+
+    public String getCourtyardIds() { return courtyardIds; }
+    public void setCourtyardIds(String courtyardIds) { this.courtyardIds = courtyardIds; }
 }

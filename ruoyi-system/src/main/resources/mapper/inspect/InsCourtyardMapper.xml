@@ -5,6 +5,10 @@
     <resultMap type="InsCourtyard" id="InsCourtyardResult">
         <id     property="courtyardId"   column="courtyard_id"/>
         <result property="courtyardName" column="courtyard_name"/>
+        <result property="deptId"        column="dept_id"/>
+        <result property="deptName"      column="dept_name"/>
+        <result property="gridDeptId"    column="grid_dept_id"/>
+        <result property="gridName"      column="grid_name"/>
         <result property="sortOrder"     column="sort_order"/>
         <result property="status"        column="status"/>
         <result property="createBy"      column="create_by"/>
@@ -15,9 +19,13 @@
     </resultMap>
 
     <sql id="selectCourtyardVo">
-        select courtyard_id, courtyard_name, sort_order, status,
-               create_by, create_time, update_by, update_time, remark
-        from ins_courtyard
+        select c.courtyard_id, c.courtyard_name, c.dept_id, d.dept_name,
+               d.parent_id as grid_dept_id, gd.dept_name as grid_name,
+               c.sort_order, c.status,
+               c.create_by, c.create_time, c.update_by, c.update_time, c.remark
+        from ins_courtyard c
+        left join sys_dept d on c.dept_id = d.dept_id
+        left join sys_dept gd on d.parent_id = gd.dept_id
     </sql>
 
     <select id="selectCourtyardList" parameterType="InsCourtyard" resultMap="InsCourtyardResult">
