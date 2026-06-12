@@ -77,13 +77,12 @@ public class H5InspectController extends BaseController
         return toAjax(logService.updateLogByWorker(log, photos));
     }
 
-    /** 我的巡查日志列表 */
+    /** 我的巡查日志列表（支持日期/地址筛选） */
     @PreAuthorize("@ss.hasRole('micro_grid')")
     @GetMapping("/log/myList")
-    public TableDataInfo myLogList()
+    public TableDataInfo myLogList(InsLog query)
     {
         startPage();
-        InsLog query = new InsLog();
         query.setCreateBy(getUsername());
         List<InsLog> list = logService.selectLogList(query);
         return getDataTable(list);

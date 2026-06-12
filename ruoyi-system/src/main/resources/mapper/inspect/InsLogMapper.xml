@@ -51,6 +51,7 @@
             <if test="inspectResult != null and inspectResult != ''">and l.inspect_result = #{inspectResult}</if>
             <if test="hazardLevel != null and hazardLevel != ''">and l.hazard_level = #{hazardLevel}</if>
             <if test="createBy != null and createBy != ''">and l.create_by = #{createBy}</if>
+            <if test="addressName != null and addressName != ''">and l.address_name like concat('%', #{addressName}, '%')</if>
             <if test="beginTime != null">and l.inspect_time &gt;= #{beginTime}</if>
             <if test="endTime != null">and l.inspect_time &lt;= #{endTime}</if>
         </where>

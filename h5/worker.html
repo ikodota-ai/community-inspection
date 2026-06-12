@@ -99,6 +99,12 @@
 
         <!-- ====== 档案 ====== -->
         <div v-if="viewMode==='history'" class="flex flex-col min-h-full">
+            <!-- 筛选栏 -->
+            <div class="p-3 bg-gray-50 flex gap-2 items-center text-xs">
+              <input type="date" v-model="filterDate" class="border rounded-lg p-1.5 flex-1 text-xs" placeholder="开始日期">
+              <input type="text" v-model="filterAddr" @input="loadHistory" class="border rounded-lg p-1.5 flex-1 text-xs" placeholder="默认地址筛选">
+              <button @click="loadHistory" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs">筛选</button>
+            </div>
             <div v-if="logs.length===0" class="p-20 text-center text-gray-300">暂无档案记录</div>
             <div v-else class="divide-y flex-1">
                 <div v-for="r in logs" :key="r.logId" class="p-3 bg-white border-l-4 active:bg-gray-50" :style="{borderColor: r.inspectResult==='pass'?'#10b981':'#ef4444'}">
@@ -166,6 +172,7 @@ createApp({
     setup() {
         const viewMode = ref('form'); const isEditing = ref(false); const submitting = ref(false);
         const logs = ref([]); const lastLog = ref({}); const suggestions = ref([]);
+        const filterDate = ref(''); const filterAddr = ref('');
         // 从后端字典接口加载枚举数据
         const mainTypes = ref([]);
         const subTypes = ref([]);
@@ -268,7 +275,10 @@ createApp({
         // ==== 档案 ====
         const loadHistory = async () => {
             try {
-                const data = await apiJson(API+'/h5/log/myList?pageNum=1&pageSize=50', { headers: authHeaders() });
+                let url = API+'/h5/log/myList?pageNum=1&pageSize=50';
+                if (filterDate.value) url += '&beginTime='+filterDate.value+' 00:00:00&endTime='+filterDate.value+' 23:59:59';
+                if (filterAddr.value) url += '&addressName='+encodeURIComponent(filterAddr.value);
+                const data = await apiJson(url, { headers: authHeaders() });
                 logs.value = data.rows || [];
                 viewMode.value = 'history';
             } catch(e) { alert('加载失败: '+e.message); }
