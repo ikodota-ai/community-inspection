@@ -3,7 +3,7 @@ package com.ruoyi.system.domain.inspect;
 import com.ruoyi.common.core.domain.BaseEntity;
 
 /**
- * 院落/网格单元
+ * 网格/网格单元
  * 
  * @author ruoyi
  */

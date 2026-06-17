@@ -24,7 +24,7 @@ public class InsLogController extends BaseController
     @Autowired
     private IInsLogService logService;
 
-    /** 巡查日志列表（支持院落/类型/结果/时间筛选） */
+    /** 巡查日志列表（支持网格/类型/结果/时间筛选） */
     @PreAuthorize("@ss.hasPermi('inspect:dashboard:list')")
     @GetMapping("/list")
     public TableDataInfo list(InsLog log)
@@ -42,7 +42,7 @@ public class InsLogController extends BaseController
         return success(logService.selectLogById(logId));
     }
 
-    /** 按院落统计（统计卡片数据） */
+    /** 按网格统计（统计卡片数据） */
     @PreAuthorize("@ss.hasPermi('inspect:dashboard:list')")
     @GetMapping("/statistics")
     public AjaxResult statistics(InsLog log)

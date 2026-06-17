@@ -32,7 +32,7 @@ public class H5InspectController extends BaseController
 
     // ============ 地址搜索 ============
 
-    /** H5地址自动补全（限定本院落，返回含预存租户信息） */
+    /** H5地址自动补全（限定本网格，返回含预存租户信息） */
     @PreAuthorize("@ss.hasRole('micro_grid')")
     @GetMapping("/address/search")
     public AjaxResult searchAddress(@RequestParam String keyword)
@@ -102,7 +102,7 @@ public class H5InspectController extends BaseController
 
     // ============ 通用 ============
 
-    /** 获取当前微网格员所属院落信息 */
+    /** 获取当前微网格员所属网格信息 */
     @PreAuthorize("@ss.hasRole('micro_grid')")
     @GetMapping("/courtyard/my")
     public AjaxResult myCourtyard()

@@ -12,7 +12,7 @@ import com.ruoyi.system.domain.inspect.InsCourtyard;
 import com.ruoyi.system.service.inspect.IInsCourtyardService;
 
 /**
- * 院落管理（PC端）
+ * 网格管理（PC端）
  */
 @RestController
 @RequestMapping("/inspect/courtyard")
@@ -21,7 +21,7 @@ public class InsCourtyardController extends BaseController
     @Autowired
     private IInsCourtyardService courtyardService;
 
-    /** 院落列表（sidebar导航 + 筛选下拉） */
+    /** 网格列表（sidebar导航 + 筛选下拉） */
     @PreAuthorize("@ss.hasPermi('inspect:dashboard:list')")
     @GetMapping("/list")
     public AjaxResult list(InsCourtyard courtyard)
@@ -30,7 +30,7 @@ public class InsCourtyardController extends BaseController
         return success(list);
     }
 
-    /** 全部正常院落 */
+    /** 全部正常网格 */
     @GetMapping("/all")
     public AjaxResult all()
     {
@@ -45,7 +45,7 @@ public class InsCourtyardController extends BaseController
     }
 
     @PreAuthorize("@ss.hasPermi('inspect:address:add')")
-    @Log(title = "院落管理", businessType = BusinessType.INSERT)
+    @Log(title = "网格管理", businessType = BusinessType.INSERT)
     @PostMapping
     public AjaxResult add(@RequestBody InsCourtyard courtyard)
     {
@@ -54,7 +54,7 @@ public class InsCourtyardController extends BaseController
     }
 
     @PreAuthorize("@ss.hasPermi('inspect:address:edit')")
-    @Log(title = "院落管理", businessType = BusinessType.UPDATE)
+    @Log(title = "网格管理", businessType = BusinessType.UPDATE)
     @PutMapping
     public AjaxResult edit(@RequestBody InsCourtyard courtyard)
     {
@@ -63,7 +63,7 @@ public class InsCourtyardController extends BaseController
     }
 
     @PreAuthorize("@ss.hasPermi('inspect:address:remove')")
-    @Log(title = "院落管理", businessType = BusinessType.DELETE)
+    @Log(title = "网格管理", businessType = BusinessType.DELETE)
     @DeleteMapping("/{courtyardId}")
     public AjaxResult remove(@PathVariable Long courtyardId)
     {

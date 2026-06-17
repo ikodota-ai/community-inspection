@@ -1,14 +1,14 @@
 <template>
   <div class="app-container">
     <el-form :inline="true" :model="queryParams" size="small">
-      <el-form-item label="院落"><el-select v-model="queryParams.courtyardId" clearable @change="handleQuery" placeholder="全部"><el-option v-for="c in courtyards" :key="c.courtyardId" :label="c.courtyardName" :value="c.courtyardId"/></el-select></el-form-item>
+      <el-form-item label="网格"><el-select v-model="queryParams.courtyardId" clearable @change="handleQuery" placeholder="全部"><el-option v-for="c in courtyards" :key="c.courtyardId" :label="c.courtyardName" :value="c.courtyardId"/></el-select></el-form-item>
       <el-form-item label="地址"><el-input v-model="queryParams.addressName" placeholder="搜索地址"/></el-form-item>
       <el-form-item><el-button type="primary" @click="handleQuery" icon="el-icon-search">搜索</el-button></el-form-item>
       <el-form-item><el-button type="success" @click="openAdd" icon="el-icon-plus">新增地址</el-button></el-form-item>
     </el-form>
 
     <el-table v-loading="loading" :data="list" border stripe>
-      <el-table-column label="院落" prop="courtyardName" width="120"/>
+      <el-table-column label="网格" prop="courtyardName" width="120"/>
       <el-table-column label="地址" prop="addressName" min-width="200"/>
       <el-table-column label="类型" width="100"><template slot-scope="s">{{ typeMap[s.row.placeType]||s.row.placeType }}</template></el-table-column>
       <el-table-column label="承租人" prop="tenantName" width="100"/>
@@ -24,7 +24,7 @@
 
     <el-dialog :title="isEdit?'修改地址':'新增地址'" :visible.sync="dialogVisible" width="500px">
       <el-form :model="form" label-width="80px" size="small">
-        <el-form-item label="所属院落"><el-select v-model="form.courtyardId"><el-option v-for="c in courtyards" :key="c.courtyardId" :label="c.courtyardName" :value="c.courtyardId"/></el-select></el-form-item>
+        <el-form-item label="所属网格"><el-select v-model="form.courtyardId"><el-option v-for="c in courtyards" :key="c.courtyardId" :label="c.courtyardName" :value="c.courtyardId"/></el-select></el-form-item>
         <el-form-item label="地址全称"><el-input v-model="form.addressName"/></el-form-item>
         <el-form-item label="巡查类型"><el-select v-model="form.placeType"><el-option label="楼栋" value="building"/><el-option label="街巷" value="street"/><el-option label="公共场所" value="public"/><el-option label="商企" value="biz"/><el-option label="工地" value="site"/></el-select></el-form-item>
         <el-form-item label="承租人"><el-input v-model="form.tenantName"/></el-form-item>

@@ -34,10 +34,10 @@ public class InsLog extends BaseEntity
     /** 巡查照片 */
     private List<InsLogPhoto> photos;
 
-    /** 批量院落筛选（逗号分隔ID，非持久化） */
+    /** 批量网格筛选（逗号分隔ID，非持久化） */
     private String courtyardIds;
 
-    /** 统计用：院落汇总数据（非持久化字段） */
+    /** 统计用：网格汇总数据（非持久化字段） */
     private Integer totalCount;
     private Integer hazardCount;
     private Integer rectifiedCount;

@@ -16,7 +16,7 @@ public interface IInsLogService
     public int updateLogByWorker(InsLog log, List<InsLogPhoto> photos);
     /** PC端：管理员订正日志 */
     public int updateLogByAdmin(InsLog log);
-    /** 统计：按院落汇总 */
+    /** 统计：按网格汇总 */
     public List<InsLog> selectLogStatistics(InsLog log);
     /** 租户档案列表 */
     public List<InsLog> selectTenantList(InsLog log);

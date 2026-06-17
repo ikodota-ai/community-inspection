@@ -7,7 +7,7 @@ public interface IInsAddressService
 {
     public List<InsAddress> selectAddressList(InsAddress address);
     public InsAddress selectAddressById(Long addressId);
-    /** H5地址搜索：按院落+关键词模糊匹配，返回结果含预存租户信息 */
+    /** H5地址搜索：按网格+关键词模糊匹配，返回结果含预存租户信息 */
     public List<InsAddress> searchAddress(String keyword, Long courtyardId);
     public int insertAddress(InsAddress address);
     public int updateAddress(InsAddress address);

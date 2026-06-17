@@ -81,7 +81,7 @@
     <!-- ==================== 大屏模式 ==================== -->
     <div v-else class="fs-overlay" @keydown.esc="fullscreen=false">
       <aside class="fs-sidebar">
-        <div class="fs-sb-head"><h2>院落导航</h2><p>13个指定院落 · 实时监控</p></div>
+        <div class="fs-sb-head"><h2>网格导航</h2><p>13个指定网格 · 实时监控</p></div>
         <div @click="setGlobalView" :class="['fs-sb-item',{active:!queryParams.courtyardId&&!queryParams.inspectResult&&fsView==='record'}]">🌐 全辖区汇总视图</div>
         <div v-for="c in courtyards" :key="c.courtyardId" :class="['fs-sb-item',{active:queryParams.courtyardId===c.courtyardId&&fsView==='record'}]">
           <div class="fs-sb-name" @click="selectCourtyard(c)">{{ c.courtyardName }}</div>
@@ -152,7 +152,7 @@
           </table>
           <!-- 租户表格 -->
           <table v-else class="fs-table">
-            <thead><tr><th>所属院落</th><th>地址</th><th>承租人</th><th>电话</th><th>最近巡查</th><th>操作</th></tr></thead>
+            <thead><tr><th>所属网格</th><th>地址</th><th>承租人</th><th>电话</th><th>最近巡查</th><th>操作</th></tr></thead>
             <tbody>
               <tr v-for="row in tenantList" :key="row.logId" class="fs-row">
                 <td class="fs-worker">{{ row.courtyardName }}</td>

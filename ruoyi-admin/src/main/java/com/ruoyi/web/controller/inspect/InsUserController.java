@@ -13,7 +13,7 @@ import com.ruoyi.system.service.inspect.IInsCourtyardService;
 import com.ruoyi.system.mapper.SysUserMapper;
 
 /**
- * 人员院落分配（巡查管理专用）
+ * 人员网格分配（巡查管理专用）
  */
 @RestController
 @RequestMapping("/inspect/user")

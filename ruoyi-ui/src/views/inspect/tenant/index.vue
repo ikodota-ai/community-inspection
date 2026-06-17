@@ -1,12 +1,12 @@
 <template>
   <div class="app-container">
     <el-form :inline="true" :model="queryParams" size="small">
-      <el-form-item label="院落"><el-select v-model="queryParams.courtyardId" clearable @change="handleQuery" placeholder="全部"><el-option v-for="c in courtyards" :key="c.courtyardId" :label="c.courtyardName" :value="c.courtyardId"/></el-select></el-form-item>
+      <el-form-item label="网格"><el-select v-model="queryParams.courtyardId" clearable @change="handleQuery" placeholder="全部"><el-option v-for="c in courtyards" :key="c.courtyardId" :label="c.courtyardName" :value="c.courtyardId"/></el-select></el-form-item>
       <el-form-item><el-button type="primary" @click="handleQuery" icon="el-icon-search">搜索</el-button></el-form-item>
     </el-form>
 
     <el-table v-loading="loading" :data="list" border stripe>
-      <el-table-column label="院落" prop="courtyardName" width="120"/>
+      <el-table-column label="网格" prop="courtyardName" width="120"/>
       <el-table-column label="地址" prop="addressName" min-width="180"/>
       <el-table-column label="承租人" prop="tenantName" width="100"/>
       <el-table-column label="电话" prop="tenantPhone" width="130"/>
