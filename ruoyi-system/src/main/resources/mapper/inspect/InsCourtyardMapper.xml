@@ -31,14 +31,14 @@
     <select id="selectCourtyardList" parameterType="InsCourtyard" resultMap="InsCourtyardResult">
         <include refid="selectCourtyardVo"/>
         <where>
-            <if test="courtyardName != null and courtyardName != ''">and courtyard_name like concat('%', #{courtyardName}, '%')</if>
-            <if test="status != null and status != ''">and status = #{status}</if>
+            <if test="courtyardName != null and courtyardName != ''">and c.courtyard_name like concat('%', #{courtyardName}, '%')</if>
+            <if test="status != null and status != ''">and c.status = #{status}</if>
         </where>
-        order by sort_order
+        order by c.sort_order
     </select>
 
     <select id="selectCourtyardAll" resultMap="InsCourtyardResult">
-        <include refid="selectCourtyardVo"/> where status = '0' order by sort_order
+        <include refid="selectCourtyardVo"/> where c.status = '0' order by c.sort_order
     </select>
 
     <select id="selectCourtyardById" parameterType="Long" resultMap="InsCourtyardResult">

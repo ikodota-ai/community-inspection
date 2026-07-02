@@ -43,4 +43,10 @@ public class InsAddress extends BaseEntity
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    /** 详细地址（几单元几号） */
+    private String detailAddress;
+
+    public String getDetailAddress() { return detailAddress; }
+    public void setDetailAddress(String detailAddress) { this.detailAddress = detailAddress; }
 }

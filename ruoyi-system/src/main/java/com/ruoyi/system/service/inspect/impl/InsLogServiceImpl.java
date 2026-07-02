@@ -79,6 +79,16 @@ public class InsLogServiceImpl implements IInsLogService
         return logMapper.selectTenantList(log);
     }
 
+    @Override
+    public InsLog selectLatestLogByAddressId(Long addressId) {
+        return logMapper.selectLatestLogByAddressId(addressId);
+    }
+
+
+    @Override
+    public List<InsLog> selectTenantListByAddressId(InsLog log) {
+        return logMapper.selectTenantListByAddressId(log);
+    }
     /** 简单流水号自增（生产环境建议用Redis原子自增或号段表） */
     private synchronized String generateSeq() {
         return String.format("%03d", System.currentTimeMillis() % 1000);

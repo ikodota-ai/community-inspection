@@ -14,4 +14,8 @@ public interface InsLogMapper
     public List<InsLog> selectLogStatistics(InsLog log);
     /** 租户档案：tenant_name非空的日志记录 */
     public List<InsLog> selectTenantList(InsLog log);
+    /** 查询某个地址的所有历史租户列表（去重） */
+    public List<InsLog> selectTenantListByAddressId(InsLog log);
+    /** 查询某个地址的最新巡查记录 */
+    public InsLog selectLatestLogByAddressId(Long addressId);
 }

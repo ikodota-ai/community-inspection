@@ -7,6 +7,7 @@
         <result property="courtyardId"  column="courtyard_id"/>
         <result property="courtyardName" column="courtyard_name"/>
         <result property="addressName"  column="address_name"/>
+        <result property="detailAddress" column="detail_address"/>
         <result property="placeType"    column="place_type"/>
         <result property="tenantName"   column="tenant_name"/>
         <result property="tenantPhone"  column="tenant_phone"/>
@@ -20,7 +21,7 @@
 
     <sql id="selectAddressVo">
         select a.address_id, a.courtyard_id, c.courtyard_name,
-               a.address_name, a.place_type, a.tenant_name, a.tenant_phone,
+               a.address_name, a.detail_address, a.place_type, a.tenant_name, a.tenant_phone,
                a.status, a.create_by, a.create_time, a.update_by, a.update_time, a.remark
         from ins_address a
         left join ins_courtyard c on a.courtyard_id = c.courtyard_id
@@ -43,7 +44,7 @@
         where a.status = '0'
         <if test="courtyardId != null">and a.courtyard_id = #{courtyardId}</if>
         <if test="addressName != null and addressName != ''">and a.address_name like concat('%', #{addressName}, '%')</if>
-        limit 10
+        
     </select>
 
     <select id="selectAddressById" parameterType="Long" resultMap="InsAddressResult">
@@ -51,9 +52,9 @@
     </select>
 
     <insert id="insertAddress" parameterType="InsAddress" useGeneratedKeys="true" keyProperty="addressId">
-        insert into ins_address(courtyard_id, address_name, place_type, tenant_name, tenant_phone,
+        insert into ins_address(courtyard_id, address_name, detail_address, place_type, tenant_name, tenant_phone,
                                 status, create_by, create_time, remark)
-        values(#{courtyardId}, #{addressName}, #{placeType}, #{tenantName}, #{tenantPhone},
+        values(#{courtyardId}, #{addressName}, #{detailAddress}, #{placeType}, #{tenantName}, #{tenantPhone},
                '0', #{createBy}, sysdate(), #{remark})
     </insert>
 
@@ -62,6 +63,7 @@
         <set>
             <if test="courtyardId != null">courtyard_id = #{courtyardId},</if>
             <if test="addressName != null">address_name = #{addressName},</if>
+            <if test="detailAddress != null">detail_address = #{detailAddress},</if>
             <if test="placeType != null">place_type = #{placeType},</if>
             <if test="tenantName != null">tenant_name = #{tenantName},</if>
             <if test="tenantPhone != null">tenant_phone = #{tenantPhone},</if>

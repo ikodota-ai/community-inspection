@@ -31,25 +31,42 @@
         <!-- ====== 表单 ====== -->
         <div v-if="viewMode==='form'" class="p-4 space-y-5">
             <div class="grid grid-cols-3 gap-2">
-                <button v-for="t in mainTypes" @click="form.mainType=t.value; form.subType='gas'" :class="['py-2 rounded-xl border text-xs font-bold transition', form.mainType===t.value?'bg-blue-600 text-white border-blue-600 shadow-md':'bg-white text-gray-600']">{{ t.label }}</button>
+                <button v-for="t in mainTypes" @click="onMainTypeChange(t.value)" :class="['py-2 rounded-xl border text-xs font-bold transition', form.mainType===t.value?'bg-blue-600 text-white border-blue-600 shadow-md':'bg-white text-gray-600']">{{ t.label }}</button>
             </div>
             <div class="grid grid-cols-4 gap-2">
-                <button v-for="s in subTypes" @click="form.subType=s.value" :class="['py-1.5 rounded-lg border text-[10px] font-bold transition', form.subType===s.value?'bg-indigo-500 text-white':'bg-white text-gray-600']">{{ s.label }}</button>
+                <button v-for="s in filteredSubTypes" @click="form.subType=s.value" :class="subTypeButtonClass(s.value)" :style="subTypeButtonStyle(s.value)">{{ s.label }}</button>
             </div>
             <div class="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 space-y-4">
                 <div class="relative">
                     <label class="block text-xs font-bold text-blue-600 mb-1">巡查地址</label>
-                    <input v-model="form.addressName" @input="searchAddress" type="text" placeholder="输入地址搜索..." class="w-full px-4 py-3 rounded-xl bg-white text-sm outline-none shadow-sm">
+                    <input v-model="form.addressName" @input="searchAddress" @focus="searchAddress" type="text" placeholder="输入地址搜索..." class="w-full px-4 py-3 rounded-xl bg-white text-sm outline-none shadow-sm">
                     <div v-if="suggestions.length>0" class="absolute z-40 w-full mt-1 bg-white border rounded-xl shadow-2xl overflow-hidden">
                         <div v-for="item in suggestions" @click="selectAddress(item)" class="px-4 py-3 text-sm hover:bg-blue-50 border-b flex justify-between">
-                            <span>{{ item.addressName }}</span><span class="text-[10px] text-blue-500">{{ item.tenantName||'无租户' }}</span>
+                            <span>{{ item.addressName }}</span><span class="text-[10px] text-blue-500">{{ item.tenantName ? (form.subType==='solo' ? '老人：' : '租户：') + item.tenantName : (form.subType==='solo' ? '无老人信息' : '无租户') }}</span>
                         </div>
                     </div>
+                    <div class="mt-3">
+                        <label class="block text-xs font-bold text-blue-600 mb-1">详细地址 <span class="text-gray-400">(几单元几号)</span></label>
+                        <input v-model="form.detailAddress" type="text" placeholder="如：1栋2单元301室" class="w-full px-4 py-3 rounded-xl bg-white text-sm outline-none shadow-sm">
+                    </div>
                 </div>
-                <div v-if="form.subType==='tenant'" class="bg-white p-4 rounded-xl border-l-4 border-orange-500">
-                    <h4 class="text-xs font-bold text-gray-400 mb-2">租户信息 <span class="text-orange-400">(现场修正)</span></h4>
+                <div v-if="['tenant','solo'].includes(form.subType)" class="bg-white p-4 rounded-xl border-l-4 border-orange-500">
+                    <h4 class="text-xs font-bold text-gray-400 mb-2">{{ subTypeLabel }} <span class="text-orange-400">(现场修正)</span></h4>
                     <div class="grid grid-cols-2 gap-4">
-                        <div><p class="text-[10px] text-gray-400">承租人</p><input v-model="form.tenantName" class="tenant-input text-sm" placeholder="姓名"></div>
+                        <div class="relative">
+                            <p class="text-[10px] text-gray-400">{{ personLabel }}</p>
+                            <input v-model="tenantSearch" @input="onTenantInput" @focus="onTenantFocus" class="tenant-input text-sm" placeholder="姓名">
+                            <!-- 历史租户选择下拉框 -->
+                            <div v-if="showTenantSelector && filteredTenantList.length>0" class="absolute z-50 w-full mt-1 bg-white border rounded-xl shadow-2xl overflow-hidden max-h-40">
+                                <div v-for="(t,i) in filteredTenantList" :key="i" @click="selectTenant(t)" class="px-3 py-2 text-sm hover:bg-blue-50 border-b last:border-0 cursor-pointer">
+                                    <div class="font-medium">{{ t.tenantName }}</div>
+                                    <div v-if="t.tenantPhone" class="text-xs text-gray-500">{{ t.tenantPhone }}</div>
+                                </div>
+                            </div>
+                            <div v-if="showTenantSelector && filteredTenantList.length===0" class="absolute z-50 w-full mt-1 bg-white border rounded-xl shadow-2xl p-3 text-sm text-gray-400 text-center">
+                                无匹配的历史记录
+                            </div>
+                        </div>
                         <div><p class="text-[10px] text-gray-400">联系电话</p><input v-model="form.tenantPhone" class="tenant-input text-sm" placeholder="手机号"></div>
                     </div>
                 </div>
@@ -117,16 +134,79 @@
                             <p class="text-[10px] text-gray-500 truncate">{{ r.addressName }}</p>
                             <p class="text-[9px] text-blue-500 font-mono mt-1">{{ r.inspectTime }}</p>
                         </div>
-                        <button @click="editRecord(r)" class="flex flex-col items-center p-2 text-orange-600 font-bold bg-orange-50 rounded-xl border border-orange-100"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" stroke-width="2"/></svg><span class="text-[9px]">编辑</span></button>
+                        <button @click="viewRecord(r)" class="flex flex-col items-center p-2 text-blue-600 font-bold bg-blue-50 rounded-xl border border-blue-100"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-width="2"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" stroke-width="2"/></svg><span class="text-[9px]">查看</span></button>
                     </div>
                 </div>
             </div>
         </div>
     </main>
+
+    <!-- 档案详情弹层 -->
+    <div v-if="detailVisible" class="fixed inset-0 z-50 bg-black/45 flex items-end" @click.self="closeDetail">
+        <div class="bg-gray-50 w-full max-h-[88vh] rounded-t-3xl overflow-hidden shadow-2xl flex flex-col">
+            <div class="p-4 bg-white border-b flex justify-between items-center">
+                <div>
+                    <p class="text-[10px] text-blue-500 font-mono font-bold">{{ currentRecord.logCode || '巡查详情' }}</p>
+                    <h2 class="text-base font-black text-gray-900 mt-0.5">{{ mainLabel(currentRecord.mainType) }} · {{ subLabel(currentRecord.subType) }}</h2>
+                </div>
+                <button @click="closeDetail" class="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center font-black">×</button>
+            </div>
+
+            <div v-if="detailLoading" class="p-12 text-center text-gray-400 text-sm">详情加载中...</div>
+            <div v-else class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3">
+                <div class="bg-gradient-to-br from-blue-600 to-cyan-600 rounded-2xl p-4 text-white shadow-lg">
+                    <div class="flex justify-between items-start gap-3">
+                        <div class="min-w-0">
+                            <p class="text-[11px] opacity-80 mb-1">巡查地址</p>
+                            <p class="text-lg font-black break-words">{{ currentRecord.addressName || '-' }}</p>
+                            <p v-if="currentRecord.detailAddress" class="text-xs opacity-90 mt-1">{{ currentRecord.detailAddress }}</p>
+                        </div>
+                        <span :class="['shrink-0 text-[10px] px-2 py-1 rounded-full font-black', currentRecord.inspectResult==='pass'?'bg-green-400 text-green-950':currentRecord.inspectResult==='rectified'?'bg-gray-200 text-gray-700':'bg-red-400 text-red-950']">{{ resultLabel(currentRecord.inspectResult) }}</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-white rounded-2xl p-3 border"><p class="text-[10px] text-gray-400 font-bold">巡查时间</p><p class="text-xs font-black text-gray-800 mt-1 break-words">{{ currentRecord.inspectTime || '-' }}</p></div>
+                    <div class="bg-white rounded-2xl p-3 border"><p class="text-[10px] text-gray-400 font-bold">隐患级别</p><p class="text-xs font-black text-gray-800 mt-1">{{ levelLabel(currentRecord.hazardLevel) || '无' }}</p></div>
+                    <div class="bg-white rounded-2xl p-3 border"><p class="text-[10px] text-gray-400 font-bold">巡查人</p><p class="text-xs font-black text-gray-800 mt-1">{{ currentRecord.workerName || currentRecord.createBy || '-' }}</p></div>
+                    <div class="bg-white rounded-2xl p-3 border"><p class="text-[10px] text-gray-400 font-bold">所属院落</p><p class="text-xs font-black text-gray-800 mt-1 break-words">{{ currentRecord.courtyardName || '-' }}</p></div>
+                </div>
+
+                <div v-if="currentRecord.tenantName || currentRecord.tenantPhone" class="bg-amber-50 border border-amber-100 rounded-2xl p-3">
+                    <p class="text-[10px] text-amber-600 font-black mb-2">人员信息</p>
+                    <div class="flex justify-between gap-3 text-sm">
+                        <span class="font-black text-gray-800">{{ currentRecord.tenantName || '-' }}</span>
+                        <span class="font-mono text-gray-600">{{ currentRecord.tenantPhone || '-' }}</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl p-3 border">
+                    <p class="text-[10px] text-gray-400 font-bold mb-2">巡查描述</p>
+                    <p class="text-sm text-gray-700 leading-6 whitespace-pre-wrap break-words">{{ currentRecord.description || '暂无描述' }}</p>
+                </div>
+
+                <div class="bg-white rounded-2xl p-3 border">
+                    <p class="text-[10px] text-gray-400 font-bold mb-2">现场照片</p>
+                    <div v-if="currentRecord.photos && currentRecord.photos.length" class="grid grid-cols-3 gap-2">
+                        <a v-for="p in currentRecord.photos" :key="p.photoId || p.photoUrl" :href="normalizePhotoUrl(p.photoUrl)" target="_blank" class="block aspect-square rounded-xl overflow-hidden bg-gray-100 border">
+                            <img :src="normalizePhotoUrl(p.photoUrl)" class="w-full h-full object-cover">
+                        </a>
+                    </div>
+                    <div v-else class="py-6 text-center text-xs text-gray-300">暂无现场照片</div>
+                </div>
+            </div>
+
+            <div class="p-4 bg-white border-t grid grid-cols-2 gap-3">
+                <button @click="closeDetail" class="py-3 rounded-2xl border text-gray-500 font-bold text-sm">关闭</button>
+                <button @click="editCurrentRecord" class="py-3 rounded-2xl bg-blue-600 text-white font-bold text-sm">修改记录</button>
+            </div>
+        </div>
+    </div>
 </div>
 <script>
-const { createApp, ref } = Vue;
+const { createApp, ref, computed, watch } = Vue;
 // 自动使用当前域名，nginx代理到后端
+// dconst API = 'http://localhost:8080';
 const API = window.location.protocol + '//' + window.location.host;
 const TOKEN = () => localStorage.getItem('token')||'';
 
@@ -172,14 +252,37 @@ createApp({
     setup() {
         const viewMode = ref('form'); const isEditing = ref(false); const submitting = ref(false);
         const logs = ref([]); const lastLog = ref({}); const suggestions = ref([]);
+        const detailVisible = ref(false); const detailLoading = ref(false); const currentRecord = ref({});
         const filterDate = ref(''); const filterAddr = ref('');
         // 从后端字典接口加载枚举数据
         const mainTypes = ref([]);
+        
+        // 动态类型标签
+        const subTypeLabels = { solo: "独居老人信息", tenant: "租户信息" };
+        const personLabels = { solo: "老人姓名", tenant: "承租人" };
+        const subTypeLabel = computed(() => subTypeLabels[form.value.subType] || "人员信息");
+        const personLabel = computed(() => personLabels[form.value.subType] || "姓名");
         const subTypes = ref([]);
+        // 根据主类型过滤巡查小类：只有楼栋才显示租户/独居
+        const filteredSubTypes = computed(() => {
+            if (form.value.mainType === 'building') {
+                return subTypes.value;
+            } else {
+                // 非楼栋类型，排除 tenant/solo
+                return subTypes.value.filter(s => !['tenant', 'solo'].includes(s.value));
+            }
+        });
+        // 切换主类型时重置小类为燃气
+        const onMainTypeChange = (val) => {
+            form.value.mainType = val;
+            if (val !== 'building' && ['tenant', 'solo'].includes(form.value.subType)) {
+                form.value.subType = 'gas';
+            }
+        };
         const resultTypes = ref([]);
         const levelTypes = ref([]);
 
-        const form = ref({ logId:null, mainType:'', subType:'', addressName:'', addressId:null,
+        const form = ref({ logId:null, mainType:'', subType:'', addressName:'', addressId:null, detailAddress:'',
             description:'', inspectResult:'', hazardLevel:'', tenantName:'', tenantPhone:'',
             photos:[], inspectTime:'' });
 
@@ -209,29 +312,143 @@ createApp({
         const subLabel = (v) => dictLabel(subTypes.value, v);
         const resultLabel = (v) => dictLabel(resultTypes.value, v);
         const levelLabel = (v) => dictLabel(levelTypes.value, v);
+        const normalizePhotoUrl = (url) => (url || '').replace(/^https?:\/\/[^/]+/, '');
+        const subTypeColors = {
+            fire: { color: '#dc2626', light: '#fef2f2' },
+            gas: { color: '#f59e0b', light: '#fffbeb' },
+            tenant: { color: '#16a34a', light: '#f0fdf4' },
+            solo: { color: '#2563eb', light: '#eff6ff' },
+            other: { color: '#6b7280', light: '#f3f4f6' }
+        };
+        const subTypeColor = (value) => {
+            if (value === 'guard') return null;
+            return subTypeColors[value] || subTypeColors.other;
+        };
+        const subTypeButtonClass = (value) => {
+            const base = 'py-1.5 rounded-lg border text-[10px] font-bold transition';
+            if (value === 'guard') {
+                return [base, form.value.subType === value ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-white text-gray-600'];
+            }
+            return [base];
+        };
+        const subTypeButtonStyle = (value) => {
+            const cfg = subTypeColor(value);
+            if (!cfg) return {};
+            const active = form.value.subType === value;
+            return active
+                ? { backgroundColor: cfg.color, borderColor: cfg.color, color: '#ffffff' }
+                : { backgroundColor: cfg.light, borderColor: cfg.color, color: cfg.color };
+        };
 
         // ==== 地址搜索 ====
         let searchTimer;
         const searchAddress = () => {
             clearTimeout(searchTimer);
             searchTimer = setTimeout(async () => {
-                const kw = form.value.addressName;
-                if (kw.length < 1) { suggestions.value = []; return; }
+                const kw = form.value.addressName || '';
                 try {
                     const data = await apiJson(API+'/h5/address/search?keyword='+encodeURIComponent(kw), { headers: authHeaders() });
                     suggestions.value = data.data || [];
                 } catch(e) { console.error(e); }
             }, 300);
         };
-        const selectAddress = (item) => {
-            form.value.addressName = item.addressName;
-            form.value.addressId = item.addressId;
-            suggestions.value = [];
-            if (form.value.subType === '租户') {
-                form.value.tenantName = item.tenantName || '';
-                form.value.tenantPhone = item.tenantPhone || '';
+        const showTenantSelector = ref(false);
+        const tenantList = ref([]);
+        const tenantSearch = ref('');
+        
+        // 过滤后的租户列表
+        const filteredTenantList = computed(() => {
+            if (!tenantSearch.value) return tenantList.value;
+            return tenantList.value.filter(t => 
+                (t.tenantName && t.tenantName.includes(tenantSearch.value)) ||
+                (t.tenantPhone && t.tenantPhone.includes(tenantSearch.value))
+            );
+        });
+        
+        // 租户输入框变化
+        const onTenantInput = () => {
+            if (tenantList.value.length > 0) {
+                showTenantSelector.value = true;
             }
         };
+        
+        // 租户输入框聚焦
+        const onTenantFocus = () => {
+            if (tenantList.value.length > 0) {
+                showTenantSelector.value = true;
+            }
+        };
+        
+        // 监听巡查类型变化，清空详细地址和人员信息
+        watch(() => form.value.subType, (newVal, oldVal) => {
+            if (newVal !== oldVal) {
+                form.value.detailAddress = '';
+                form.value.tenantName = '';
+                form.value.tenantPhone = '';
+                tenantSearch.value = '';
+                tenantList.value = [];
+                showTenantSelector.value = false;
+            }
+        });
+        
+        // 双向同步 tenantName 和 tenantSearch
+        watch(() => form.value.tenantName, (val) => {
+            if (val !== tenantSearch.value) {
+                tenantSearch.value = val;
+            }
+        });
+        watch(tenantSearch, (val) => {
+            if (val !== form.value.tenantName) {
+                form.value.tenantName = val;
+            }
+        });
+        
+        const selectAddress = async (item) => {
+            form.value.addressName = item.addressName;
+            form.value.addressId = item.addressId;
+            if (item.detailAddress) form.value.detailAddress = item.detailAddress;
+            suggestions.value = [];
+            showTenantSelector.value = false;
+            
+            if (['tenant','solo'].includes(form.value.subType)) {
+                tenantSearch.value = '';
+                try {
+                    const tenantData = await apiJson(API+'/h5/address/'+item.addressId+'/tenant-list?subType='+form.value.subType, { headers: authHeaders() });
+                    const tenants = tenantData.data || [];
+                    if (tenants.length === 0) {
+                        form.value.tenantName = item.tenantName || '';
+                        form.value.tenantPhone = item.tenantPhone || '';
+                    } else if (tenants.length === 1) {
+                        form.value.tenantName = tenants[0].tenantName || '';
+                        form.value.tenantPhone = tenants[0].tenantPhone || '';
+                        if (tenants[0].detailAddress) form.value.detailAddress = tenants[0].detailAddress;
+                    } else {
+                        tenantList.value = tenants;
+                        showTenantSelector.value = true;
+                        tenantList.value = tenants;
+                        showTenantSelector.value = true;
+                    }
+                } catch(e) {
+                    form.value.tenantName = item.tenantName || '';
+                    form.value.tenantPhone = item.tenantPhone || '';
+                }
+            }
+        };
+        
+        const selectTenant = (t) => {
+            form.value.tenantName = t.tenantName || '';
+            form.value.tenantPhone = t.tenantPhone || '';
+            if (t.detailAddress) form.value.detailAddress = t.detailAddress;
+            tenantSearch.value = t.tenantName || '';
+            showTenantSelector.value = false;
+        };
+        
+        // 点击外部关闭下拉
+        document.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('tenant-input')) {
+                showTenantSelector.value = false;
+            }
+        });
 
         // ==== 照片 ====
         const handleFileUpload = async (e) => {
@@ -283,17 +500,41 @@ createApp({
                 viewMode.value = 'history';
             } catch(e) { alert('加载失败: '+e.message); }
         };
+        const viewRecord = async (r) => {
+            if (!r || !r.logId) return alert('记录缺少ID，无法查看');
+            currentRecord.value = { ...r };
+            detailVisible.value = true;
+            detailLoading.value = true;
+            try {
+                const detail = await apiJson(API+'/h5/log/'+r.logId, { headers: authHeaders() });
+                const d = detail.data || detail;
+                currentRecord.value = {
+                    ...d,
+                    photos: (d.photos || []).map(p => ({ ...p, photoUrl: normalizePhotoUrl(p.photoUrl) }))
+                };
+            } catch(e) {
+                alert('详情加载失败: '+e.message);
+            } finally {
+                detailLoading.value = false;
+            }
+        };
+        const closeDetail = () => { detailVisible.value = false; currentRecord.value = {}; };
+        const editCurrentRecord = async () => {
+            const record = currentRecord.value;
+            closeDetail();
+            await editRecord(record);
+        };
         const editRecord = async (r) => {
             // 加载完整详情（含照片）
             const detail = await apiJson(API+'/h5/log/'+r.logId, { headers: authHeaders() });
             const d = detail.data || detail;
             form.value = { logId: d.logId, mainType: d.mainType, subType: d.subType, addressName: d.addressName,
-                addressId: d.addressId, description: d.description||'', inspectResult: d.inspectResult,
+                addressId: d.addressId, detailAddress: d.detailAddress || '', description: d.description||'', inspectResult: d.inspectResult,
                 hazardLevel: d.hazardLevel||'', tenantName: d.tenantName||'', tenantPhone: d.tenantPhone||'',
                 photos: (d.photos||[]).map(p=>{
                     let url = p.photoUrl || '';
                     // 统一转为相对路径走nginx代理
-                    url = url.replace(/^https?:\/\/[^\/]+/, '');
+                    url = normalizePhotoUrl(url);
                     return { photoUrl: url, sortOrder: p.sortOrder };
                 }), inspectTime: '' };
             isEditing.value = true; viewMode.value = 'form';
@@ -302,7 +543,7 @@ createApp({
             form.value = { logId:null,
                 mainType: mainTypes.value.length ? mainTypes.value[0].value : '',
                 subType: subTypes.value.length ? subTypes.value[0].value : '',
-                addressName:'', addressId:null, description:'',
+                addressName:'', addressId:null, detailAddress:'', description:'',
                 inspectResult: resultTypes.value.length ? resultTypes.value[0].value : '',
                 hazardLevel:'', tenantName:'', tenantPhone:'', photos:[], inspectTime:'' };
             isEditing.value = false; viewMode.value = 'form';
@@ -314,8 +555,16 @@ createApp({
         // 加载字典数据
         loadDicts();
 
-        return { viewMode, isEditing, submitting, form, mainTypes, subTypes, resultTypes, levelTypes, logs, lastLog, suggestions, mainLabel, subLabel, resultLabel, levelLabel,
+        return { viewMode, isEditing, submitting, form, mainTypes, subTypes, resultTypes, levelTypes, logs, lastLog, suggestions, mainLabel, subLabel, resultLabel, levelLabel, subTypeLabel, personLabel,
+            detailVisible, detailLoading, currentRecord, viewRecord, closeDetail, editCurrentRecord, normalizePhotoUrl,
+            subTypeButtonClass, subTypeButtonStyle,
+            // 租户搜索
+            tenantSearch, filteredTenantList, onTenantInput, onTenantFocus,
+            // 类型过滤
+            filteredSubTypes, onMainTypeChange,
+            // 原有功能
             searchAddress, selectAddress, handleFileUpload, submitForm, loadHistory, editRecord, resetForm,
+            showTenantSelector, tenantList, selectTenant,
             handleLogout, resultLabel, onResultChange };
     }
 }).mount('#app');

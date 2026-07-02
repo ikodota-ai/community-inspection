@@ -37,6 +37,16 @@ public class ResourcesConfig implements WebMvcConfigurer
         registry.addResourceHandler("/swagger-ui/**")
                 .addResourceLocations("classpath:/META-INF/resources/webjars/springfox-swagger-ui/")
                 .setCacheControl(CacheControl.maxAge(5, TimeUnit.HOURS).cachePublic());
+
+        /**
+         * H5 静态资源配置：
+         * 1. 开发环境：优先读取项目根目录 ./h5/（修改后刷新即生效）
+         * 2. 生产环境：读取 classpath 下的 static/h5/（打包进 JAR）
+         * Spring 会按顺序查找，找到第一个即返回
+         */
+        registry.addResourceHandler("/h5/**")
+                .addResourceLocations("file:./h5/", "classpath:/static/h5/")
+                .setCacheControl(CacheControl.noCache());
     }
 
     /**

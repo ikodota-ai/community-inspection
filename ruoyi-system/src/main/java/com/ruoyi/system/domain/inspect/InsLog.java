@@ -3,6 +3,7 @@ package com.ruoyi.system.domain.inspect;
 import java.util.Date;
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.ruoyi.common.annotation.Excel;
 import com.ruoyi.common.core.domain.BaseEntity;
 
 /**
@@ -15,21 +16,44 @@ public class InsLog extends BaseEntity
     private static final long serialVersionUID = 1L;
 
     private Long logId;
+    @Excel(name = "流水号", sort = 1)
     private String logCode;
     private Long courtyardId;
+
+    @Excel(name = "所属院落", sort = 4)
     private String courtyardName;       // 冗余，关联查询用
     private Long addressId;
+
+    @Excel(name = "巡查地址", sort = 5)
     private String addressName;
+
+    @Excel(name = "巡查类型", dictType = "ins_place_type", sort = 7)
     private String mainType;
+
+    @Excel(name = "巡查项目", dictType = "ins_inspect_item", sort = 8)
     private String subType;
+
+    @Excel(name = "巡查结果", dictType = "ins_inspect_result", sort = 9)
     private String inspectResult;
+
+    @Excel(name = "隐患级别", dictType = "ins_hazard_level", sort = 10)
     private String hazardLevel;
+
+    @Excel(name = "问题描述", sort = 13, width = 30)
     private String description;
+
+    @Excel(name = "特殊人员姓名", sort = 11)
     private String tenantName;
+
+    @Excel(name = "特殊人员电话", sort = 12)
     private String tenantPhone;
 
+    @Excel(name = "巡查时间", width = 30, dateFormat = "yyyy-MM-dd HH:mm:ss", sort = 2)
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date inspectTime;
+
+    @Excel(name = "巡查人", sort = 3)
+    private String workerName;
 
     /** 巡查照片 */
     private List<InsLogPhoto> photos;
@@ -88,6 +112,9 @@ public class InsLog extends BaseEntity
     public Date getInspectTime() { return inspectTime; }
     public void setInspectTime(Date inspectTime) { this.inspectTime = inspectTime; }
 
+    public String getWorkerName() { return workerName; }
+    public void setWorkerName(String workerName) { this.workerName = workerName; }
+
     public List<InsLogPhoto> getPhotos() { return photos; }
     public void setPhotos(List<InsLogPhoto> photos) { this.photos = photos; }
 
@@ -108,4 +135,11 @@ public class InsLog extends BaseEntity
 
     public String getCourtyardIds() { return courtyardIds; }
     public void setCourtyardIds(String courtyardIds) { this.courtyardIds = courtyardIds; }
+
+    /** 详细地址（几单元几号） */
+    @Excel(name = "详细地址", sort = 6)
+    private String detailAddress;
+
+    public String getDetailAddress() { return detailAddress; }
+    public void setDetailAddress(String detailAddress) { this.detailAddress = detailAddress; }
 }

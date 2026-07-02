@@ -9,6 +9,7 @@
         <result property="courtyardName"  column="courtyard_name"/>
         <result property="addressId"      column="address_id"/>
         <result property="addressName"    column="address_name"/>
+        <result property="detailAddress"  column="detail_address"/>
         <result property="mainType"       column="main_type"/>
         <result property="subType"        column="sub_type"/>
         <result property="inspectResult"  column="inspect_result"/>
@@ -17,6 +18,7 @@
         <result property="tenantName"     column="tenant_name"/>
         <result property="tenantPhone"    column="tenant_phone"/>
         <result property="inspectTime"    column="inspect_time"/>
+        <result property="workerName"     column="worker_name"/>
         <result property="createBy"       column="create_by"/>
         <result property="createTime"     column="create_time"/>
         <result property="updateBy"       column="update_by"/>
@@ -34,12 +36,14 @@
 
     <sql id="selectLogVo">
         select l.log_id, l.log_code, l.courtyard_id, c.courtyard_name,
-               l.address_id, l.address_name, l.main_type, l.sub_type,
+               l.address_id, l.address_name, l.detail_address, l.main_type, l.sub_type,
                l.inspect_result, l.hazard_level, l.description,
                l.tenant_name, l.tenant_phone, l.inspect_time,
+               coalesce(u.nick_name, l.create_by) as worker_name,
                l.create_by, l.create_time, l.update_by, l.update_time, l.remark
         from ins_log l
         left join ins_courtyard c on l.courtyard_id = c.courtyard_id
+        left join sys_user u on l.create_by = u.user_name and u.del_flag = '0'
     </sql>
 
     <select id="selectLogList" parameterType="InsLog" resultMap="InsLogResult">
@@ -51,7 +55,7 @@
             <if test="subType != null and subType != ''">and l.sub_type = #{subType}</if>
             <if test="inspectResult != null and inspectResult != ''">and l.inspect_result = #{inspectResult}</if>
             <if test="hazardLevel != null and hazardLevel != ''">and l.hazard_level = #{hazardLevel}</if>
-            <if test="createBy != null and createBy != ''">and l.create_by = #{createBy}</if>
+            <if test="createBy != null and createBy != ''">and (l.create_by like concat('%', #{createBy}, '%') or u.nick_name like concat('%', #{createBy}, '%'))</if>
             <if test="addressName != null and addressName != ''">and l.address_name like concat('%', #{addressName}, '%')</if>
             <if test="beginTime != null">and l.inspect_time &gt;= #{beginTime}</if>
             <if test="endTime != null">and l.inspect_time &lt;= #{endTime}</if>
@@ -79,18 +83,28 @@
     </select>
 
     <select id="selectTenantList" parameterType="InsLog" resultMap="InsLogResult">
-        <include refid="selectLogVo"/>
+        select max(l.log_id) as log_id, l.address_id, a.address_name, l.detail_address, l.courtyard_id, c.courtyard_name,
+               l.sub_type, l.tenant_name, l.tenant_phone, max(l.inspect_time) as inspect_time,
+               max(l.inspect_result) as inspect_result, max(l.hazard_level) as hazard_level
+        from ins_log l
+        left join ins_address a on l.address_id = a.address_id
+        left join ins_courtyard c on l.courtyard_id = c.courtyard_id
         where l.tenant_name is not null and l.tenant_name != ''
         <if test="courtyardId != null">and l.courtyard_id = #{courtyardId}</if>
-        order by l.inspect_time desc
+        <if test="courtyardIds != null and courtyardIds != ''">and l.courtyard_id in (${courtyardIds})</if>
+        <if test="subType != null and subType != ''">and l.sub_type = #{subType}</if>
+        <if test="tenantName != null and tenantName != ''">and l.tenant_name like concat('%', #{tenantName}, '%')</if>
+        <if test="tenantPhone != null and tenantPhone != ''">and l.tenant_phone like concat('%', #{tenantPhone}, '%')</if>
+        group by l.address_id, l.tenant_name, l.tenant_phone, l.detail_address
+        order by max(l.inspect_time) desc
     </select>
 
     <insert id="insertLog" parameterType="InsLog" useGeneratedKeys="true" keyProperty="logId">
-        insert into ins_log(log_code, courtyard_id, address_id, address_name,
+        insert into ins_log(log_code, courtyard_id, address_id, address_name, detail_address,
                             main_type, sub_type, inspect_result, hazard_level,
                             description, tenant_name, tenant_phone, inspect_time,
                             create_by, create_time, remark)
-        values(#{logCode}, #{courtyardId}, #{addressId}, #{addressName},
+        values(#{logCode}, #{courtyardId}, #{addressId}, #{addressName}, #{detailAddress},
                #{mainType}, #{subType}, #{inspectResult}, #{hazardLevel},
                #{description}, #{tenantName}, #{tenantPhone}, #{inspectTime},
                #{createBy}, sysdate(), #{remark})
@@ -100,6 +114,7 @@
         update ins_log
         <set>
             <if test="addressName != null">address_name = #{addressName},</if>
+            <if test="detailAddress != null">detail_address = #{detailAddress},</if>
             <if test="mainType != null">main_type = #{mainType},</if>
             <if test="subType != null">sub_type = #{subType},</if>
             <if test="inspectResult != null">inspect_result = #{inspectResult},</if>
@@ -107,6 +122,8 @@
             <if test="description != null">description = #{description},</if>
             <if test="tenantName != null">tenant_name = #{tenantName},</if>
             <if test="tenantPhone != null">tenant_phone = #{tenantPhone},</if>
+            <if test="inspectTime != null">inspect_time = #{inspectTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
             update_by = #{updateBy}, update_time = sysdate()
         </set>
         where log_id = #{logId}
@@ -115,5 +132,21 @@
     <delete id="deleteLogById" parameterType="Long">
         delete from ins_log where log_id = #{logId}
     </delete>
+
+    <select id="selectLatestLogByAddressId" parameterType="Long" resultMap="InsLogResult">
+        <include refid="selectLogVo"/>
+        where l.address_id = #{addressId}
+        order by l.inspect_time desc limit 1
+    </select>
+
+    <!-- 查询某个地址的所有历史租户列表（按最后巡查时间倒序，按巡查类型过滤） -->
+    <select id="selectTenantListByAddressId" parameterType="InsLog" resultMap="InsLogResult">
+        select max(l.log_id) as log_id, l.tenant_name, l.tenant_phone, l.detail_address
+        from ins_log l
+        where l.address_id = #{addressId} and l.tenant_name is not null and l.tenant_name != ''
+        <if test="subType != null and subType != ''">and l.sub_type = #{subType}</if>
+        group by l.tenant_name, l.tenant_phone, l.detail_address
+        order by max(l.inspect_time) desc
+    </select>
 
 </mapper>

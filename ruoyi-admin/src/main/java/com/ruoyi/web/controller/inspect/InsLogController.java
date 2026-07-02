@@ -36,7 +36,7 @@ public class InsLogController extends BaseController
 
     /** 日志详情（含照片） */
     @PreAuthorize("@ss.hasPermi('inspect:dashboard:list')")
-    @GetMapping(value = "/{logId}")
+    @GetMapping(value = "/{logId:\\d+}")
     public AjaxResult getInfo(@PathVariable Long logId)
     {
         return success(logService.selectLogById(logId));
@@ -50,7 +50,7 @@ public class InsLogController extends BaseController
         return success(logService.selectLogStatistics(log));
     }
 
-    /** 租户档案列表 */
+    /** 特殊人员档案列表（支持按巡查小类筛选：tenant租户 solo独居） */
     @PreAuthorize("@ss.hasPermi('inspect:tenant:list')")
     @GetMapping("/tenantList")
     public TableDataInfo tenantList(InsLog log)

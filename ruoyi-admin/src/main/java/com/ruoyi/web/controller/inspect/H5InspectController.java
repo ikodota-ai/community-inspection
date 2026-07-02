@@ -42,6 +42,25 @@ public class H5InspectController extends BaseController
         return success(list);
     }
 
+    /** 获取某个地址的最新巡查记录（用于回填租户历史信息） */
+    @PreAuthorize("@ss.hasRole('micro_grid')")
+    @GetMapping("/address/{addressId}/latest-log")
+    public AjaxResult getLatestLogByAddress(@PathVariable Long addressId) {
+        InsLog log = logService.selectLatestLogByAddressId(addressId);
+        return success(log);
+    }
+
+    /** 获取某个地址的所有历史租户列表（去重，按巡查小类过滤） */
+    @PreAuthorize("@ss.hasRole('micro_grid')")
+    @GetMapping("/address/{addressId}/tenant-list")
+    public AjaxResult getTenantListByAddress(@PathVariable Long addressId, @RequestParam(required = false) String subType) {
+        InsLog query = new InsLog();
+        query.setAddressId(addressId);
+        query.setSubType(subType);
+        List<InsLog> tenantList = logService.selectTenantListByAddressId(query);
+        return success(tenantList);
+    }
+
     // ============ 巡查日志 ============
 
     /** 提交巡查日志（含照片URL数组、租户信息） */
