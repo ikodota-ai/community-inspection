@@ -17,6 +17,7 @@ public class InsCourtyard extends BaseEntity
     private String deptName;     // 网格名称（关联sys_dept）
     private Long gridDeptId;     // 父级网格dept_id
     private String gridName;     // 父级网格名称
+    private Integer gridOrderNum; // 父级网格排序号（来自sys_dept.order_num）
     private Integer sortOrder;
     private String status;
 
@@ -37,6 +38,9 @@ public class InsCourtyard extends BaseEntity
 
     public String getGridName() { return gridName; }
     public void setGridName(String gridName) { this.gridName = gridName; }
+
+    public Integer getGridOrderNum() { return gridOrderNum; }
+    public void setGridOrderNum(Integer gridOrderNum) { this.gridOrderNum = gridOrderNum; }
 
     public Integer getSortOrder() { return sortOrder; }
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }

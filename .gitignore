@@ -1,3 +1,13 @@
+
+AGENTS.md
+CLAUDE.md
+logs/
+ruoyi-admin/src/main/resources/application-prod.yml
+ruoyi-ui/dist.zip
+ruoyi-ui/vue.config.js.bak
+sql/ry-vue.sql
+uploadPath/
+
 ######################################################################
 # Build Tools
 

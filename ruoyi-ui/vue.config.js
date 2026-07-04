@@ -9,7 +9,7 @@ const CompressionPlugin = require('compression-webpack-plugin')
 
 const name = process.env.VUE_APP_TITLE || '社区巡查管理系统' // 网页标题
 
-const baseUrl = 'http://localhost:8083' // 后端接口(Docker nginx代理)
+const baseUrl = 'http://127.0.0.1:8080/' // 后端接口(Docker nginx代理)
 
 const port = 9000 // 端口
 

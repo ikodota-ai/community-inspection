@@ -408,12 +408,16 @@ export default {
     editPhotoUrls() { return (this.editForm && this.editForm.photos ? this.editForm.photos : []).map(p => p.photoUrl).filter(Boolean); },
     gridList() {
       const map = {};
+      const order = [];
       this.courtyards.forEach(c => {
         const gid = c.gridDeptId || 0;
-        if (!map[gid]) map[gid] = { id: gid, name: c.gridName || '未分组', children: [] };
+        if (!map[gid]) {
+          map[gid] = { id: gid, name: c.gridName || '未分组', children: [] };
+          order.push(gid);
+        }
         map[gid].children.push(c);
       });
-      return Object.values(map).sort((a,b) => a.id - b.id);
+      return order.map(id => map[id]);
     }
   },
   watch: { fsView(v) { if (v==='tenant' || v==='solo') this.loadTenants(); else this.handleQuery(); } },

@@ -118,9 +118,10 @@
         <div v-if="viewMode==='history'" class="flex flex-col min-h-full">
             <!-- 筛选栏 -->
             <div class="p-3 bg-gray-50 flex gap-2 items-center text-xs">
-              <input type="date" v-model="filterDate" class="border rounded-lg p-1.5 flex-1 text-xs" placeholder="开始日期">
-              <input type="text" v-model="filterAddr" @input="loadHistory" class="border rounded-lg p-1.5 flex-1 text-xs" placeholder="默认地址筛选">
+              <input type="date" v-model="filterDate" @change="loadHistory" class="border rounded-lg p-1.5 flex-1 text-xs" placeholder="日期">
+              <input type="text" v-model="filterAddr" @keyup.enter="loadHistory" class="border rounded-lg p-1.5 flex-1 text-xs" placeholder="地址关键字">
               <button @click="loadHistory" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs">筛选</button>
+              <button v-if="filterDate||filterAddr" @click="resetFilter" class="bg-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-xs">重置</button>
             </div>
             <div v-if="logs.length===0" class="p-20 text-center text-gray-300">暂无档案记录</div>
             <div v-else class="divide-y flex-1">
@@ -451,14 +452,43 @@ createApp({
         });
 
         // ==== 照片 ====
+        // 压缩图片到最长边 <= maxSize（默认1080），JPEG 质量 0.85；若原图更小或非图片则直接返回原文件
+        const compressImage = (file, maxSize = 1080, quality = 0.85) => new Promise((resolve) => {
+            if (!file || !file.type || !file.type.startsWith('image/')) return resolve(file);
+            const url = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = () => {
+                URL.revokeObjectURL(url);
+                const { width: w, height: h } = img;
+                const longest = Math.max(w, h);
+                if (longest <= maxSize) return resolve(file);
+                const scale = maxSize / longest;
+                const targetW = Math.round(w * scale);
+                const targetH = Math.round(h * scale);
+                const canvas = document.createElement('canvas');
+                canvas.width = targetW; canvas.height = targetH;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, targetW, targetH);
+                canvas.toBlob((blob) => {
+                    if (!blob) return resolve(file);
+                    const name = (file.name || 'photo.jpg').replace(/\.(png|webp|heic|heif|bmp)$/i, '.jpg');
+                    resolve(new File([blob], name, { type: 'image/jpeg', lastModified: Date.now() }));
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+            img.src = url;
+        });
+
         const handleFileUpload = async (e) => {
             const files = Array.from(e.target.files);
             for (const file of files) {
                 if (form.value.photos.length >= 9) break;
-                const fd = new FormData(); fd.append('file', file);
+                let uploadFile = file;
+                try { uploadFile = await compressImage(file, 1080, 0.85); } catch(err) { console.warn('压缩失败，使用原图', err); }
+                const fd = new FormData(); fd.append('file', uploadFile);
                 try {
                     const data = await apiUpload(API+'/common/upload', { method:'POST', headers:{'Authorization':'Bearer '+TOKEN()}, body:fd });
-                    if (data.code === 200) form.value.photos.push({ photoUrl: data.url||data.fileName, sortOrder: form.value.photos.length, preview: URL.createObjectURL(file) });
+                    if (data.code === 200) form.value.photos.push({ photoUrl: data.url||data.fileName, sortOrder: form.value.photos.length, preview: URL.createObjectURL(uploadFile) });
                 } catch(e) { console.error(e); }
             }
             e.target.value = '';
@@ -492,14 +522,19 @@ createApp({
         // ==== 档案 ====
         const loadHistory = async () => {
             try {
-                let url = API+'/h5/log/myList?pageNum=1&pageSize=50';
-                if (filterDate.value) url += '&beginTime='+filterDate.value+' 00:00:00&endTime='+filterDate.value+' 23:59:59';
-                if (filterAddr.value) url += '&addressName='+encodeURIComponent(filterAddr.value);
+                const params = new URLSearchParams({ pageNum: '1', pageSize: '50' });
+                if (filterDate.value) {
+                    params.append('beginTime', filterDate.value + ' 00:00:00');
+                    params.append('endTime',   filterDate.value + ' 23:59:59');
+                }
+                if (filterAddr.value) params.append('addressName', filterAddr.value);
+                const url = API + '/h5/log/myList?' + params.toString();
                 const data = await apiJson(url, { headers: authHeaders() });
                 logs.value = data.rows || [];
                 viewMode.value = 'history';
             } catch(e) { alert('加载失败: '+e.message); }
         };
+        const resetFilter = () => { filterDate.value = ''; filterAddr.value = ''; loadHistory(); };
         const viewRecord = async (r) => {
             if (!r || !r.logId) return alert('记录缺少ID，无法查看');
             currentRecord.value = { ...r };
@@ -563,7 +598,7 @@ createApp({
             // 类型过滤
             filteredSubTypes, onMainTypeChange,
             // 原有功能
-            searchAddress, selectAddress, handleFileUpload, submitForm, loadHistory, editRecord, resetForm,
+            searchAddress, selectAddress, handleFileUpload, submitForm, loadHistory, resetFilter, filterDate, filterAddr, editRecord, resetForm,
             showTenantSelector, tenantList, selectTenant,
             handleLogout, resultLabel, onResultChange };
     }

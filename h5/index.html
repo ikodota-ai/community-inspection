@@ -43,8 +43,8 @@ const API = window.location.protocol + '//' + window.location.host;
 
 createApp({
     setup() {
-        const username = ref('wg_zhangsan');
-        const password = ref('admin123');
+        const username = ref('');
+        const password = ref('');
         const loading = ref(false);
         const errorMsg = ref('');
         const handleLogin = async () => {

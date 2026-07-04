@@ -83,9 +83,18 @@
     </select>
 
     <select id="selectTenantList" parameterType="InsLog" resultMap="InsLogResult">
-        select max(l.log_id) as log_id, l.address_id, a.address_name, l.detail_address, l.courtyard_id, c.courtyard_name,
-               l.sub_type, l.tenant_name, l.tenant_phone, max(l.inspect_time) as inspect_time,
-               max(l.inspect_result) as inspect_result, max(l.hazard_level) as hazard_level
+        select max(l.log_id) as log_id,
+               l.address_id,
+               max(a.address_name) as address_name,
+               l.detail_address,
+               max(l.courtyard_id) as courtyard_id,
+               max(c.courtyard_name) as courtyard_name,
+               max(l.sub_type) as sub_type,
+               l.tenant_name,
+               l.tenant_phone,
+               max(l.inspect_time) as inspect_time,
+               max(l.inspect_result) as inspect_result,
+               max(l.hazard_level) as hazard_level
         from ins_log l
         left join ins_address a on l.address_id = a.address_id
         left join ins_courtyard c on l.courtyard_id = c.courtyard_id

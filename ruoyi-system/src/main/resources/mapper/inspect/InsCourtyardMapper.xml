@@ -9,6 +9,7 @@
         <result property="deptName"      column="dept_name"/>
         <result property="gridDeptId"    column="grid_dept_id"/>
         <result property="gridName"      column="grid_name"/>
+        <result property="gridOrderNum"  column="grid_order_num"/>
         <result property="sortOrder"     column="sort_order"/>
         <result property="status"        column="status"/>
         <result property="createBy"      column="create_by"/>
@@ -20,7 +21,7 @@
 
     <sql id="selectCourtyardVo">
         select c.courtyard_id, c.courtyard_name, c.dept_id, d.dept_name,
-               d.parent_id as grid_dept_id, gd.dept_name as grid_name,
+               d.parent_id as grid_dept_id, gd.dept_name as grid_name, gd.order_num as grid_order_num,
                c.sort_order, c.status,
                c.create_by, c.create_time, c.update_by, c.update_time, c.remark
         from ins_courtyard c
@@ -34,11 +35,19 @@
             <if test="courtyardName != null and courtyardName != ''">and c.courtyard_name like concat('%', #{courtyardName}, '%')</if>
             <if test="status != null and status != ''">and c.status = #{status}</if>
         </where>
-        order by c.sort_order
+        order by isnull(gd.order_num) asc,
+                 gd.order_num asc,
+                 c.sort_order asc,
+                 c.courtyard_id asc
     </select>
 
     <select id="selectCourtyardAll" resultMap="InsCourtyardResult">
-        <include refid="selectCourtyardVo"/> where c.status = '0' order by c.sort_order
+        <include refid="selectCourtyardVo"/>
+        where c.status = '0'
+        order by isnull(gd.order_num) asc,
+                 gd.order_num asc,
+                 c.sort_order asc,
+                 c.courtyard_id asc
     </select>
 
     <select id="selectCourtyardById" parameterType="Long" resultMap="InsCourtyardResult">
