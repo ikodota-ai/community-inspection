@@ -35,10 +35,11 @@ public class H5InspectController extends BaseController
     /** H5地址自动补全（限定本网格，返回含预存租户信息） */
     @PreAuthorize("@ss.hasRole('micro_grid')")
     @GetMapping("/address/search")
-    public AjaxResult searchAddress(@RequestParam String keyword)
+    public AjaxResult searchAddress(@RequestParam(required = false, defaultValue = "") String keyword,
+                                    @RequestParam(required = false) String subType)
     {
         Long courtyardId = getCurrentCourtyardId();
-        List<InsAddress> list = addressService.searchAddress(keyword, courtyardId);
+        List<InsAddress> list = addressService.searchAddress(keyword, courtyardId, subType);
         return success(list);
     }
 

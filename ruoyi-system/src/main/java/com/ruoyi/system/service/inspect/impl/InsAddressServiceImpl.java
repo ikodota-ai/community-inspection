@@ -24,11 +24,11 @@ public class InsAddressServiceImpl implements IInsAddressService
     }
 
     @Override
-    public List<InsAddress> searchAddress(String keyword, Long courtyardId) {
+    public List<InsAddress> searchAddress(String keyword, Long courtyardId, String subType) {
         InsAddress query = new InsAddress();
         query.setAddressName(keyword);
         query.setCourtyardId(courtyardId);
-        return addressMapper.searchAddress(query);
+        return addressMapper.searchAddress(query, subType);
     }
 
     @Override

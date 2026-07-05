@@ -39,12 +39,29 @@
     </select>
 
     <!-- H5地址搜索：按院落+关键词匹配，只查正常状态的地址 -->
-    <select id="searchAddress" parameterType="InsAddress" resultMap="InsAddressResult">
-        <include refid="selectAddressVo"/>
+    <select id="searchAddress" resultMap="InsAddressResult">
+        select a.address_id, a.courtyard_id, c.courtyard_name,
+               a.address_name, a.detail_address, a.place_type,
+               coalesce(nullif(a.tenant_name,''), lg.tenant_name) as tenant_name,
+               coalesce(nullif(a.tenant_phone,''), lg.tenant_phone) as tenant_phone,
+               a.status, a.create_by, a.create_time, a.update_by, a.update_time, a.remark
+        from ins_address a
+        left join ins_courtyard c on a.courtyard_id = c.courtyard_id
+        left join (
+            select l.address_id, l.tenant_name, l.tenant_phone
+            from ins_log l
+            inner join (
+                select address_id, max(log_id) as log_id
+                from ins_log
+                where tenant_name is not null and tenant_name != ''
+                <if test="subType != null and subType != ''">and sub_type = #{subType}</if>
+                group by address_id
+            ) lm on lm.log_id = l.log_id
+        ) lg on lg.address_id = a.address_id
         where a.status = '0'
-        <if test="courtyardId != null">and a.courtyard_id = #{courtyardId}</if>
-        <if test="addressName != null and addressName != ''">and a.address_name like concat('%', #{addressName}, '%')</if>
-        
+        <if test="query.courtyardId != null">and a.courtyard_id = #{query.courtyardId}</if>
+        <if test="query.addressName != null and query.addressName != ''">and a.address_name like concat('%', #{query.addressName}, '%')</if>
+        order by a.address_name
     </select>
 
     <select id="selectAddressById" parameterType="Long" resultMap="InsAddressResult">
